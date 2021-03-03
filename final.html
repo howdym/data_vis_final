@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html>
+<meta charset="utf-8">
+<style>
+    .container { 
+        display: flex;
+    }
+
+    .tooltip { 
+        position: absolute; 
+        width: 275px; 
+        height: 185px; 
+        pointer-events: none;
+        background-color: bisque;
+    }
+
+    .exit { 
+        float: right;
+    }
+</style>
+
+<head> 
+    <link href="nouislider.min.css" rel="stylesheet">
+</head>
+
+<body>
+    <script src="nouislider.min.js"></script>
+    <form>
+        <input type="Button" value="Filter Gasoline" onclick="filterToGasoline()"/>
+    </form>
+    <form>
+        <input type="Button" value="Filter E85" onclick="filterToE85()"/>
+    </form>
+    <div id="slider"></div>
+    <div class="container">
+        <svg id="Dimensions"></svg>
+        <svg id="Legend1" height=300 width=450></svg>
+    </div>
+    <div class="container">
+        <svg id="HighwayMPG-HP"></svg>
+        <svg id="Legend2" height=300 width=450></svg>
+    </div>
+    <svg id="CityMPG-Volume"></svg>
+</body>
+
+<script src="http://d3js.org/d3.v6.min.js"></script>
+
+<script>
+  let width = 960, height = 500;
+  var margin = {top: 30, right: 20, bottom: 50, left: 20};
+
+  let svg1 = d3.select("#Dimensions")
+      .attr("width", width)
+      .attr("height", height)
+      .append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+
+  let svg2 = d3.select("#HighwayMPG-HP") 
+      .attr("width", width) 
+      .attr("height", height)
+      .append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+  let svg3 = d3.select("#CityMPG-Volume") 
+      .attr("width", width) 
+      .attr("height", height)
+      .append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+  var tooltip = d3.select("body").append("div") 
+      .attr("class", "tooltip") 
+      .style("opacity", 0);
+
+  width = width - margin.left - margin.right;
+  height = height - margin.top - margin.bottom;
+
+  let masterCars, cars;
+  ready();
+
+  var circleMin = 5, circleMax = 10;
+  var cityMPG = [], highwayMPG = [], HP = [], Volume = [], carLength = [], carHeight = [], carWidth = [], Fuel = [], ID = [];
+  var xScale1, yScale1, xScale2, yScale2, xScale3, yScale3, fuelColor, widthSizes;
+
+  async function ready() {
+    masterCars = await d3.csv("cars.csv");
+    for (var i = 0; i < masterCars.length; i++) 
+        masterCars[i]["ID"] = i;
+    cars = masterCars.slice();
+
+    var tooltip = d3.select("body").append("div") 
+      .attr("class", "tooltip") 
+      .style("opacity", 0);
+
+    init();
+
+    var slider = document.getElementById('slider');
+
+    noUiSlider.create(slider, {
+        start: [20, 80],
+        connect: true,
+        range: {
+            'min': d3.min(cityMPG),
+            'max': d3.max(cityMPG)
+        }
+    });
+
+    slider.noUiSlider.on("update", d => filterToCarMPG(+slider.noUiSlider.get()[0], 
+                                                       +slider.noUiSlider.get()[1]))
+  }
+
+  function collect() {
+    cityMPG = [], highwayMPG = [], HP = [], Volume = [], carLength = [], carHeight = [], carWidth = [], Fuel = [], ID = [];
+    for (var i = 0; i < cars.length; i++) { 
+        var data = cars[i]; 
+        cityMPG.push(+data["Fuel Information.City mpg"]);
+        highwayMPG.push(+data["Fuel Information.Highway mpg"]);
+        HP.push(+data["Engine Information.Engine Statistics.Horsepower"]);
+        var w = +data["Dimensions.Width"], l = +data["Dimensions.Length"], h = +data["Dimensions.Height"];
+        Volume.push(w * l * h);
+        carWidth.push(w); 
+        carLength.push(l);
+        carHeight.push(h);
+        Fuel.push(data["Fuel Information.Fuel Type"])
+        ID.push(data["ID"])
+    }
+  }
+
+  function makeRanges() { 
+    xScale1 = d3.scaleLinear()
+        .domain([d3.min(carLength), d3.max(carLength)])	
+        .range([20, width - 20]);	
+    
+    yScale1 = d3.scaleLinear()
+        .domain([d3.min(carHeight), d3.max(carHeight)])	
+        .range([height - 20, 20]);	
+
+    carScale = d3.scaleLinear()
+        .domain([d3.min(carWidth), d3.max(carWidth)])	
+        .range([circleMin, circleMax]);	
+    
+    xScale2 = d3.scaleLinear()
+        .domain([d3.min(HP), d3.max(HP)])	
+        .range([5, width - 5]);	
+    
+    yScale2 = d3.scaleLinear()
+        .domain([d3.min(highwayMPG), d3.max(highwayMPG)])	
+        .range([height - 5, 5]);	
+
+    // Colors taken from color brewer: colorblind, print, and photocopy friendly. 
+    fuelColor = d3.scaleOrdinal()
+        .domain(["Gasoline", "E85", "Compressed natural gas", "Diesel fuel"])	
+        .range(["#e66101", "#fdb863", "#b2abd2", "#5e3c99"]);	
+
+    xScale3 = d3.scaleLinear()
+        .domain([d3.min(Volume), d3.max(Volume)])	
+        .range([5, width - 5]);	
+    
+    yScale3 = d3.scaleLinear()
+        .domain([d3.min(cityMPG), d3.max(cityMPG)])	
+        .range([height - 5, 5]);	 
+  }
+
+  function remakeGraph() { 
+    svg1.selectAll("*").remove();
+    svg2.selectAll("*").remove();
+    svg3.selectAll("*").remove();
+    circles1 = svg1.selectAll("circle")	
+        .data(carLength.map(function(v, i) {return [v, carHeight[i], carWidth[i], ID[i]];}))
+        .enter().append("circle")	
+            .attr("stroke", "black")
+            .attr("fill", "white") 
+            .attr("fill-opacity", 0)
+        .on("mouseover", function(d) { 
+          tooltip.transition() 
+            .duration(200) 
+            .style("opacity", .9); 
+          updateTooltip(d.path[0].__data__[3], d.pageX, d.pageY)
+        })
+        .on("mouseout", function(d) { 
+          tooltip.transition() 
+            .duration(200) 
+            .style("opacity", 0); 
+        });
+    circles1
+        .attr("cx",	function(d)	{	return	xScale1(d[0]);	})
+        .attr("cy",	function(d)	{	return	yScale1(d[1]);	})
+        .attr("r",	function(d) { return carScale(d[2]); })
+    circles1.exit()
+        .remove()
+
+    var	xAxis1 = d3.axisBottom()	
+            .scale(xScale1);
+    
+    var	yAxis1 = d3.axisLeft()	
+        .scale(yScale1);
+
+    svg1.append("g")	
+        .attr("transform", "translate(0, " + height + ")")
+        .call(xAxis1)
+        .call(g => g.append("text")
+            .attr("x", width)
+            .attr("y", margin.bottom - 5)
+            .attr("fill", "currentColor")
+            .attr("text-anchor", "end")
+            .text("Length →"));
+        
+    svg1.append("g")	
+        .call(yAxis1)
+        .call(g => g.append("text")
+            .attr("x", -margin.left)
+            .attr("y", 10)
+            .attr("fill", "currentColor")
+            .attr("text-anchor", "start")
+            .text("↑ Height"));
+
+    svg1.append("text")
+        .attr("x", (width / 2))             
+        .attr("y", 0 - (margin.top / 2))
+        .attr("text-anchor", "middle")  
+        .style("font-size", "16px")  
+        .text("Length vs Height vs Width of Car");
+
+    circles2 = svg2.selectAll("circle")	
+        .data(HP.map(function(v, i) {return [v, highwayMPG[i], Fuel[i], ID[i]];}))
+        .enter().append("circle")	
+            .attr("r",	5) 
+            .attr("opacity", 0.8)
+        .on("mouseover", function(d) { 
+          tooltip.transition() 
+            .duration(200) 
+            .style("opacity", .9); 
+          updateTooltip(d.path[0].__data__[3], d.pageX, d.pageY)
+        })
+        .on("mouseout", function(d) { 
+          tooltip.transition() 
+            .duration(200) 
+            .style("opacity", 0); 
+        });	
+    circles2
+        .attr("cx",	function(d)	{	return	xScale2(d[0]);	})
+        .attr("cy",	function(d)	{	return	yScale2(d[1]);	})
+        .attr("fill", function(d) { return fuelColor(d[2]); });
+    circles2.exit()
+        .remove();
+            
+
+    var	xAxis2 = d3.axisBottom()	
+            .scale(xScale2);
+    
+    var	yAxis2 = d3.axisLeft()	
+        .scale(yScale2);
+
+    svg2.append("g")	
+        .attr("transform", "translate(0, " + height + ")")
+        .call(xAxis2)
+        .call(g => g.append("text")
+            .attr("x", width)
+            .attr("y", margin.bottom - 5)
+            .attr("fill", "currentColor")
+            .attr("text-anchor", "end")
+            .text("Horsepower →"));
+        
+    svg2.append("g")	
+        .call(yAxis2)
+        .call(g => g.append("text")
+            .attr("x", -margin.left)
+            .attr("y", -5)
+            .attr("fill", "currentColor")
+            .attr("text-anchor", "start")
+            .text("↑ Highway MPG"));
+
+    svg2.append("text")
+        .attr("x", (width / 2))             
+        .attr("y", 0 - (margin.top / 2))
+        .attr("text-anchor", "middle")  
+        .style("font-size", "16px")  
+        .text("Horsepower vs Highway MPG vs Fuel Type");
+
+    circles3 = svg3.selectAll("circle")	
+        .data(Volume.map(function(v, i) {return [v, cityMPG[i], ID[i]];}))
+        .enter().append("circle")	
+            .attr("r",	5) 
+            .attr("stroke", "black")
+            .attr("fill", "white")
+            .attr("fill-opacity", 0)
+        .on("mouseover", function(d) { 
+          tooltip.transition() 
+            .duration(200) 
+            .style("opacity", .9); 
+          updateTooltip(d.path[0].__data__[2], d.pageX, d.pageY)
+        })
+        .on("mouseout", function(d) { 
+          tooltip.transition() 
+            .duration(200) 
+            .style("opacity", 0); 
+        });
+
+    circles3
+        .attr("cx",	function(d)	{	return	xScale3(d[0]);	})
+        .attr("cy",	function(d)	{	return	yScale3(d[1]);	}); 
+    circles3.exit()
+        .remove();
+            	
+    var	xAxis3 = d3.axisBottom()	
+            .scale(xScale3);
+    
+    var	yAxis3 = d3.axisLeft()	
+        .scale(yScale3);
+
+    svg3.append("g")	
+        .attr("transform", "translate(0, " + height + ")")
+        .call(xAxis3)
+        .call(g => g.append("text")
+            .attr("x", width)
+            .attr("y", margin.bottom - 5)
+            .attr("fill", "currentColor")
+            .attr("text-anchor", "end")
+            .text("Volume →"));
+        
+    svg3.append("g")	
+        .call(yAxis3)
+        .call(g => g.append("text")
+            .attr("x", -margin.left)
+            .attr("y", -5)
+            .attr("fill", "currentColor")
+            .attr("text-anchor", "start")
+            .text("↑ City MPG"));
+
+    svg3.append("text")
+        .attr("x", (width / 2))             
+        .attr("y", 0 - (margin.top / 2))
+        .attr("text-anchor", "middle")  
+        .style("font-size", "16px")  
+        .text("Volume of Car vs City MPG");
+  }
+
+  function makeLegend() { 
+    legend1 = d3.select("#Legend1"); 
+
+    legend1.append("text")
+        .attr("x", 0)
+        .attr("y", function(d, i){ return 75})
+        .text("Width")
+        .attr("text-anchor", "left")
+        .style("font-size", "20px") 
+        .style("alignment-baseline", "middle")
+
+    legend2 = d3.select("#Legend2"); 
+    legend2.append("text")
+        .attr("x", 0)
+        .attr("y", function(d, i){ return 75})
+        .text("Fuel Type")
+        .attr("text-anchor", "left")
+        .style("font-size", "20px") 
+        .style("alignment-baseline", "middle")
+  }
+
+  function updateLegend() { 
+    legend1 = d3.select("#Legend1"); 
+
+    // Quick fix: will probably not get away with this
+    legend1.selectAll("*").remove(); 
+    makeLegend();
+
+    var keys = [0, 1, 2, 3];
+    var quartiles = d3.scaleLinear()
+        .domain([0, 3])	
+        .range([d3.min(carWidth), d3.max(carWidth)]);
+    keys = keys.map(k => quartiles(k));
+    console.log(keys);
+
+    var circles1 = legend1.selectAll("circle")
+        .data(keys)
+        
+    circles1.enter()
+        .append("circle")
+            .attr("stroke", "black")
+            .attr("fill", "none")
+            .attr("cx", carScale(quartiles(3)) + 5)
+            .attr("cy", function(d, i){ return 100 + i*25}) // 100 is where the first dot appears. 25 is the distance between dots
+            .attr("r", function(d, i) {return carScale(d)})
+        .merge(circles1);
+    circles1.exit().remove();
+
+    var labels1 = legend1.selectAll("labels")
+        .data(keys);
+    labels1.enter()
+        .append("text")
+            .attr("text-anchor", "left")
+            .style("alignment-baseline", "middle")
+            .attr("x", carScale(quartiles(3)) + 25)
+            .attr("y", function(d, i){ return 100 + i*25})
+        .merge(labels1) // 100 is where the first dot appears. 25 is the distance between dots
+            .text(function(d, i) { return Number(d.toFixed(0))});
+    labels1.exit().remove();
+
+    legend2 = d3.select("#Legend2"); 
+
+    // Here too
+    legend2.selectAll("*").remove();
+
+    keys = [... new Set(Fuel)];
+
+    var circles2 = legend2.selectAll("circle")
+        .data(keys);
+    circles2.enter()
+        .append("circle")
+            .attr("cx", 5)
+            .attr("r", 5)
+            .attr("cy", function(d, i){ return 100 + i*25}) // 100 is where the first dot appears. 25 is the distance between dots
+            .attr("fill", function(d, i) {return fuelColor(d[i])});
+
+    var labels2 = legend2.selectAll("labels")
+        .data(keys);
+
+    labels2.enter()
+        .append("text")
+            .attr("x", 25)
+            .attr("text-anchor", "left")
+            .style("alignment-baseline", "middle")
+            .attr("y", function(d,i){ return 100 + i*25}) // 100 is where the first dot appears. 25 is the distance between dots
+            .text(function(d, i) { return d})
+            .attr("fill", function(d, i) { return fuelColor(d[i])});
+  }
+
+  function update() { 
+      collect(); 
+      makeRanges(); 
+      remakeGraph();
+      updateLegend();
+  }
+
+  function init() { 
+      collect(); 
+      makeRanges(); 
+      remakeGraph();
+      makeLegend();
+      updateLegend();
+  }
+
+
+  // Add switches to keep track of what has been pressed to adjust based on master. Use big update function to update switches and data. 
+  function filterToGasoline() { 
+      cars = cars.filter(d => d["Fuel Information.Fuel Type"] == "Gasoline");
+      update();
+  }
+
+  function filterToE85() { 
+      cars = cars.filter(d => d["Fuel Information.Fuel Type"] == "E85");
+      update();
+  }
+
+  function filterToCarMPG(lb, ub) { 
+      // Temp fix for now, refer to above comment for permanent fix. 
+      cars = masterCars.slice();
+
+      cars = cars.filter(d => d["Fuel Information.City mpg"] >= lb &&  d["Fuel Information.City mpg"] <= ub);
+      update();
+  }
+
+  function updateTooltip(id, x, y) { 
+      var data = masterCars[id]
+      tooltip.html(data["Identification.ID"] + "<br>" + data["Engine Information.Transmission"] + 
+      "<br>Highway MPG: " + data["Fuel Information.Highway mpg"] + "<br>City MPG: " + data["Fuel Information.City mpg"] + 
+      "<br>Fuel Type: " + data["Fuel Information.Fuel Type"] + "<br>" + data["Engine Information.Engine Type"] + "<br>" + 
+      data["Engine Information.Driveline"] + "<br>LxWxH: " + data["Dimensions.Length"] + "x" + data["Dimensions.Width"] + 
+      "x" + data["Dimensions.Height"])
+        .style("left", (x + 5) + "px") 
+        .style("top", (y - 30) + "px");
+  }
+
+</script>
+
+
+</html>
