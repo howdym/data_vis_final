@@ -47,8 +47,10 @@
 
 <script>
   let width = 960, height = 500;
-  var margin = {top: 30, right: 20, bottom: 50, left: 30};
-  var graphs = [d3.select("#Dimensions"), d3.select("#HighwayMPG-HP"), d3.select("#CityMPG-Volume")] 
+  var margin = {top: 50, right: 20, bottom: 50, left: 50};
+  var graphs = [{"graph": d3.select("#Dimensions"), "title": "Length vs Height vs Width of Car", "x": "Dimensions.Length", "y": "Dimensions.Height", "z": "Dimensions.Width"}, 
+                {"graph": d3.select("#HighwayMPG-HP"), "title": "Horsepower vs Highway MPG vs Fuel Type", "x": "Engine Information.Engine Statistics.Horsepower", "y": "Fuel Information.Highway mpg", "z": "Fuel Information.Fuel Type"},
+                {"graph": d3.select("#CityMPG-Volume"), "title": "Volume of Car vs City MPG", "x": "Volume", "y": "Fuel Information.City mpg", "z": null}] 
   var attr_key = ["Dimensions.Length", "Dimensions.Height", "Dimensions.Width", "Fuel Information.Highway mpg", "Engine Information.Engine Statistics.Horsepower", "Fuel Information.City mpg", "Volume", "Fuel Information.Fuel Type"]
   var attr_info = {}
   var specials = {"Dimensions.Length": {"type": "x", "axis_title": "Length →"}, 
@@ -59,18 +61,16 @@
                     "Engine Information.Engine Statistics.Horsepower": {"type": "x", "axis_title": "Horsepower →"}, 
                     "Volume": {"type": "x", "axis_title": "Volume →"}, 
                     "Fuel Information.Fuel Type": {"type": "color"}}
-  var titles = {1: "Length vs Height vs Width of Car", 2: "Horsepower vs Highway MPG vs Fuel Type", 3: "Volume of Car vs City MPG"}
-  var groups = {1: ["Dimensions.Length", "Dimensions.Height", "Dimensions.Width"], 2: ["Engine Information.Engine Statistics.Horsepower", "Fuel Information.Highway mpg", "Fuel Information.Fuel Type"], 3: ["Volume", "Fuel Information.City mpg"]}
        
   for (var i = 0; i < graphs.length; i++) { 
-      graphs[i] = graphs[i]
+      graphs[i].graph = graphs[i].graph
         .attr("width", width)
         .attr("height", height)
         .append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")")
   }
 
   for (var i = 0; i < attr_key.length; i++) { 
-    attr_info[attr_key[i]] = {"range": [], "scale": null, "axis": null, "label": ""}
+    attr_info[attr_key[i]] = {"range": [], "scale": null, "axis": null, "label": "", "type": specials[attr_key[i]]["type"], "axis_title": specials[attr_key[i]]["axis_title"]}
   }
 
   var tooltip = d3.select("body").append("div") 
@@ -87,6 +87,7 @@
 
   async function ready() {
     masterCars = await d3.csv("cars.csv");
+    masterCars = masterCars.slice(0, 11);
     cars = masterCars;
 
     var tooltip = d3.select("body").append("div") 
@@ -128,31 +129,31 @@
         offset = 20;
     }
 
-    var temp = attr_info[key]["range"];
+    var range = attr_info[key]["range"];
     var scale, axis, rlist; 
 
-    if (specials[key]["type"] == "x") {
+    if (attr_info[key]["type"] == "x") {
         rlist = [offset, width - offset];
-    } else if (specials[key]["type"] == "y") {
+    } else if (attr_info[key]["type"] == "y") {
         rlist = [height - offset, offset]; 
-    } else if (specials[key]["type"] == "size") {
+    } else if (attr_info[key]["type"] == "size") {
         rlist = [circleMin, circleMax];
     }
 
-    if (specials[key]["type"] == "color") {
+    if (attr_info[key]["type"] == "color") {
         scale = d3.scaleOrdinal()
             .domain(["Gasoline", "E85", "Compressed natural gas", "Diesel fuel"])	
             .range(["#e66101", "#fdb863", "#b2abd2", "#5e3c99"]);
     } else {
         scale = d3.scaleLinear()
-            .domain([temp[0], temp[1]])
+            .domain([range[0], range[1]])
             .range(rlist);
     }
 
-    if (specials[key]["type"] == "x") {
+    if (attr_info[key]["type"] == "x") {
         axis = d3.axisBottom()	
             .scale(scale)
-    } else if (specials[key]["type"] == "y") {
+    } else if (attr_info[key]["type"] == "y") {
         axis = d3.axisLeft()
             .scale(scale)	
     }
@@ -170,127 +171,93 @@
 
   function initAxis() {
     for (var i = 0; i < 3; i++) { 
-        group = groups[i + 1];
-        graphs[i].append("g")	
+        graphs[i].graph.append("g")	
             .attr("transform", "translate(0, " + height + ")")
             .attr("id", "xAxis")
-            .call(attr_info[group[0]]["axis"])
+            .call(attr_info[graphs[i].x]["axis"])
             .call(g => g.append("text")
                 .attr("x", width)
                 .attr("y", margin.bottom - 5)
                 .attr("fill", "currentColor")
                 .attr("text-anchor", "end")
-                .text(specials[group[0]]["axis_title"]));
+                .text(attr_info[graphs[i].x]["axis_title"]));
 
-        graphs[i].append("g")
+        graphs[i].graph.append("g")
             .attr("id", "yAxis")	
-            .call(attr_info[group[1]]["axis"])
+            .call(attr_info[graphs[i].y]["axis"])
             .call(g => g.append("text")
                 .attr("x", -margin.left)
                 .attr("y", -5)
                 .attr("fill", "currentColor")
                 .attr("text-anchor", "start")
-                .text(specials[group[1]]["axis_title"]));
+                .text(attr_info[graphs[i].y]["axis_title"]));
 
-        graphs[i].append("text")
+        graphs[i].graph.append("text")
             .attr("x", (width / 2))             
             .attr("y", 0 - (margin.top / 2))
             .attr("text-anchor", "middle")  
             .style("font-size", "16px")  
-            .text(titles[i + 1]);
+            .text(graphs[i].title);
     }
   }
 
   function updateAxis() { 
     for (var i = 0; i < 3; i++) { 
-        group = groups[i + 1];
-        graphs[i].selectAll("#xAxis")
-            .call(attr_info[group[0]]["axis"])
+        graphs[i].graph.selectAll("#xAxis")
+            .call(attr_info[graphs[i].x]["axis"])
         
-        graphs[i].selectAll("#yAxis")
-            .call(attr_info[group[1]]["axis"])
+        graphs[i].graph.selectAll("#yAxis")
+            .call(attr_info[graphs[i].y]["axis"])
     }
   }
 
+  function remakeOneGraph(i) { 
+    var graphInfo = graphs[i]
+
+    var enterList = (i == 0 || i == 2) ? [["stroke", "black"], ["fill-opacity", 0]] : [["opacity", 0.8], ["opacity", 0.8]]; 
+    var mergeList = [graphInfo.x, graphInfo.y, graphInfo.z, graphInfo.z];
+    var attrList = ["cx", "cy", "r", "fill"]
+    mergeList = mergeList.map((val, i) => {return {"attr": attrList[i], "key": val}});
+    mergeList = mergeList.map(function (obj) { 
+        var key = obj.key, res = {"attr": obj.attr, "val": d => {return attr_info[key]["scale"](+d[key])}};
+        if (obj.attr == "r" && (key == null || attr_info[key].type != "size")) { 
+            res.val = "5";
+        } else if (obj.attr == "fill" && (key == null || attr_info[key].type != "color")) { 
+            res.val = "white";
+        }
+        return res;
+    }) 
+
+    var circles = graphInfo.graph.selectAll("circle")	
+        .data(cars);
+
+    circles.exit().remove();
+
+    circles = circles.enter().append("circle")
+        .attr(enterList[0][0], enterList[0][1])
+        .attr(enterList[1][0], enterList[1][1])	
+        .on("mouseout", function(d) { 
+            tooltip.transition() 
+                .duration(200) 
+                .style("opacity", 0); 
+        })
+    .merge(circles) 
+        .attr(mergeList[0].attr, mergeList[0].val)
+        .attr(mergeList[1].attr, mergeList[1].val)
+        .attr(mergeList[2].attr, mergeList[2].val)
+        .attr(mergeList[3].attr, mergeList[3].val)
+        .on("mouseover", function(event, d, i) { 
+            tooltip.transition() 
+                .duration(200) 
+                .style("opacity", .9); 
+            updateTooltip(+d["ID"] - 1, event.pageX, event.pageY)
+        });
+  }
+
   function remakeGraph() { 
-    var group = groups[1];
-    var circles = graphs[0].selectAll("circle")	
-        .data(cars);
-	
-    circles.exit().remove();
-
-    circles = circles.enter().append("circle")	
-        .attr("stroke", "black")
-        .attr("fill", "white") 
-        .attr("fill-opacity", 0)
-        .on("mouseover", function(event, d, i) { 
-            tooltip.transition() 
-                .duration(200) 
-                .style("opacity", .9); 
-            updateTooltip(+d["ID"] - 1, event.pageX, event.pageY)
-        })
-        .on("mouseout", function(d) { 
-            tooltip.transition() 
-                .duration(200) 
-                .style("opacity", 0); 
-        })
-    .merge(circles) 
-        .attr("r",	function(d) { return attr_info[group[2]]["scale"](+d[group[2]]); })
-        .attr("cx",	function(d)	{	return	attr_info[group[0]]["scale"](+d[group[0]]);	})
-        .attr("cy",	function(d)	{	return	attr_info[group[1]]["scale"](+d[group[1]]);	});
-
-    
-    group = groups[2]; 
-    circles = graphs[1].selectAll("circle")	
-        .data(cars);
-	
-    circles.exit().remove();
-
-    circles = circles.enter().append("circle")	
-        .attr("opacity", 0.8)
-        .attr("r",	5)
-        .on("mouseover", function(event, d, i) { 
-            tooltip.transition() 
-                .duration(200) 
-                .style("opacity", .9); 
-            updateTooltip(+d["ID"] - 1, event.pageX, event.pageY)
-        })
-        .on("mouseout", function(d) { 
-            tooltip.transition() 
-                .duration(200) 
-                .style("opacity", 0); 
-        })
-    .merge(circles) 
-        .attr("fill", function(d) { return attr_info[group[2]]["scale"](d[group[2]]); })
-        .attr("cx",	function(d)	{	return	attr_info[group[0]]["scale"](+d[group[0]]);	})
-        .attr("cy",	function(d)	{	return	attr_info[group[1]]["scale"](+d[group[1]]);	});
-
-    group = groups[3]; 
-    circles = graphs[2].selectAll("circle")	
-        .data(cars);
-	
-    circles.exit().remove();
-
-    circles = circles.enter().append("circle")	
-        .attr("stroke", "black")
-        .attr("fill", "white") 
-        .attr("fill-opacity", 0)
-        .attr("r",	5)
-        .on("mouseover", function(event, d, i) { 
-            tooltip.transition() 
-                .duration(200) 
-                .style("opacity", .9); 
-            updateTooltip(+d["ID"] - 1, event.pageX, event.pageY)
-        })
-        .on("mouseout", function(d) { 
-            tooltip.transition() 
-                .duration(200) 
-                .style("opacity", 0); 
-        })
-    .merge(circles) 
-        .attr("cx",	function(d)	{	return	attr_info[group[0]]["scale"](+d[group[0]]);	})
-        .attr("cy",	function(d)	{	return	attr_info[group[1]]["scale"](+d[group[1]]);	});
-
+      for (var i = 0; i < 3; i++) { 
+          remakeOneGraph(i);
+      }
   }
 
   function makeLegend() { 
@@ -319,7 +286,7 @@
     var keys = [0, 1, 2, 3];
     var quartiles = d3.scaleLinear()
         .domain([0, 3])	
-        .range([attr_info[groups[1][2]]["range"][0], attr_info[groups[1][2]]["range"][1]]);
+        .range([attr_info[graphs[0].z]["range"][0], attr_info[graphs[0].z]["range"][1]]);
     keys = keys.map(k => quartiles(k));
     console.log(keys);
 
@@ -330,9 +297,9 @@
         .append("circle")
             .attr("stroke", "black")
             .attr("fill", "none")
-            .attr("cx", attr_info[groups[1][2]]["scale"](quartiles(3)) + 5)
+            .attr("cx", attr_info[graphs[0].z]["scale"](quartiles(3)) + 5)
             .attr("cy", function(d, i){ return 100 + i*25}) // 100 is where the first dot appears. 25 is the distance between dots
-            .attr("r", function(d, i) {return attr_info[groups[1][2]]["scale"](d)})
+            .attr("r", function(d, i) {return attr_info[graphs[0].z]["scale"](d)})
         .merge(circles1);
     circles1.exit().remove();
 
@@ -342,7 +309,7 @@
         .append("text")
             .attr("text-anchor", "left")
             .style("alignment-baseline", "middle")
-            .attr("x", attr_info[groups[1][2]]["scale"](quartiles(3)) + 25)
+            .attr("x", attr_info[graphs[0].z]["scale"](quartiles(3)) + 25)
             .attr("y", function(d, i){ return 100 + i*25})
             .attr("id", "labels")
         .merge(labels1) // 100 is where the first dot appears. 25 is the distance between dots
@@ -354,7 +321,7 @@
     // Here too
     // legend2.selectAll("*").remove();
 
-    keys = attr_info[groups[2][2]]["range"];
+    keys = attr_info[graphs[1].z]["range"];
 
     var circles2 = legend2.selectAll("circle")
         .data(keys);
@@ -364,7 +331,7 @@
             .attr("r", 5)
             .attr("cy", function(d, i){ return 100 + i*25}) // 100 is where the first dot appears. 25 is the distance between dots
         .merge(circles2)
-            .attr("fill", function(d, i) {return attr_info[groups[2][2]]["scale"](d)}); 
+            .attr("fill", function(d, i) {return attr_info[graphs[1].z]["scale"](d)}); 
     circles2.exit()
         .remove();
 
@@ -379,7 +346,7 @@
             .attr("y", function(d,i){ return 100 + i*25}) // 100 is where the first dot appears. 25 is the distance between dots
             .attr("id", "labels") 
         .merge(labels2)
-            .attr("fill", function(d, i) { return attr_info[groups[2][2]]["scale"](d)})
+            .attr("fill", function(d, i) { return attr_info[graphs[1].z]["scale"](d)})
             .text(function(d, i) { return d});
     labels2.exit().remove();
   }
