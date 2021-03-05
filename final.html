@@ -2,8 +2,16 @@
 <html>
 <meta charset="utf-8">
 <style>
-    .container { 
+    .rows { 
         display: flex;
+    }
+
+    .cols { 
+        display: flex;
+        width: 350px;
+        /* height: 100vh; */
+        flex-direction: column;
+        justify-content: space-evenly;
     }
 
     .tooltip { 
@@ -17,6 +25,52 @@
     .exit { 
         float: right;
     }
+
+    .noUi-target { 
+        width: 260px;
+        margin-bottom: 5px;
+    }
+
+    .noUi-horizontal .noUi-handle { 
+        width: 10px !important;
+        height: 25px !important;
+        content: none !important; 
+        right: -8px !important;
+    }
+
+    .noUi-handle:after, .noUi-handle:before { 
+        content: none !important; 
+    }
+
+    .legend { 
+        height: 200px; 
+        width: 190px;
+    }
+
+    .sliderBox { 
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        height: 100px; 
+        width: 350px;
+        border-color: black;
+        border-style: solid;
+        flex-wrap: wrap;
+        align-content: center;
+    }
+
+    b { 
+        text-align: center;
+    }
+
+    .buttons { 
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-start;
+        width: 350px; 
+        flex-wrap: wrap;
+    }
+    
 </style>
 
 <head> 
@@ -25,22 +79,25 @@
 
 <body>
     <script src="nouislider.min.js"></script>
-    <form>
-        <input type="Button" value="Filter Gasoline" onclick="filterToGasoline()"/>
-    </form>
-    <form>
-        <input type="Button" value="Filter E85" onclick="filterToE85()"/>
-    </form>
-    <div id="slider"></div>
-    <div class="container">
-        <svg id="Dimensions"></svg>
-        <svg id="Legend1" height=300 width=450></svg>
+    <script type="text/javascript" src="https://unpkg.com/wnumb@1.2.0/wNumb.js"></script>
+
+    <div class="rows">
+        <div id="graphs">
+            <div class="rows">
+                <svg id="Dimensions"></svg>
+                <svg id="Legend1" class="legend"></svg>
+            </div>
+            <div class="rows">
+                <svg id="HighwayMPG-HP"></svg>
+                <svg id="Legend2" class="legend"></svg>
+            </div>
+            <svg id="CityMPG-Volume"></svg>
+        </div>
+
+        <div class="cols"></div>
     </div>
-    <div class="container">
-        <svg id="HighwayMPG-HP"></svg>
-        <svg id="Legend2" height=300 width=450></svg>
-    </div>
-    <svg id="CityMPG-Volume"></svg>
+    
+    
 </body>
 
 <script src="http://d3js.org/d3.v6.min.js"></script>
@@ -51,6 +108,8 @@
   var graphs = [d3.select("#Dimensions"), d3.select("#HighwayMPG-HP"), d3.select("#CityMPG-Volume")]
   var attr_key = []
   var attr_info = {}
+  var query_attr;
+  var queries = []
        
   for (var i = 0; i < graphs.length; i++) { 
       graphs[i] = graphs[i]
@@ -77,6 +136,7 @@
 
     attr_data = await d3.csv("attr_info.csv");
     graph_info = await d3.csv("graph_info.csv");
+    query_attr = await d3.json("query_attr.json")
 
     attr_data.map(d => {attr_info[d.name] = d; attr_key.push(d.name)});
     graphs = graph_info.map((d, i) => {d.graph = graphs[i]; return d;})
@@ -86,21 +146,71 @@
       .style("opacity", 0);
 
     init();
+  }
 
-    var slider = document.getElementById('slider');
-    vals = attr_info["Fuel Information.City mpg"]["range"]
+  function makeButtons() { 
+    var buttonList = query_attr.buttons; 
+    bWraps = d3.selectAll(".cols")
+    for (var i = 0; i < buttonList.length; i++) { 
+        bWraps.append("div")
+            .attr("class", "buttonBox") 
+            .attr("id", String.fromCharCode(i + 65))
+            .html("<b>" + buttonList[i].slice(buttonList[i].lastIndexOf(".") + 1) + "</b>");
+        
+        var id = "#" + String.fromCharCode(i + 65);
+        var t = d3.select(id).append("div") 
+            .attr("class", "buttons"); 
+        
+        var options = [... new Set(masterCars.map(d => d[buttonList[i]]))];
 
-    noUiSlider.create(slider, {
-        start: [vals[0], vals[1]],
-        connect: true,
-        range: {
-            'min': vals[0],
-            'max': vals[1]
+        for (var j = 0; j < options.length; j++) {
+            var input = [buttonList[i], options[j]];
+            d3.select(id).select(".buttons").append("input") 
+                .attr("type", "Button") 
+                .attr("value", options[j])
+                .attr("id", buttonList[i] + ", " + options[j])
+                .attr("onClick", "sendName(this.id)");
         }
-    });
+    }
+  }
+//   <div class="sliderBox">
+//         <b>Name</b>
+//         <div id="slider-tooltips"></div>
+//     </div>
+  function makeSliders() { 
+    var sliderList = query_attr.sliders; 
+    sWraps = d3.selectAll(".cols")
+    for (var i = 0; i < sliderList.length; i++) { 
+        bWraps.append("div")
+            .attr("class", "sliderBox") 
+            .attr("id", String.fromCharCode(i + 97))
+            .html("<b>" + sliderList[i].slice(sliderList[i].lastIndexOf(".") + 1) + "</b>");
+        
+        var id = "#" + String.fromCharCode(i + 97);
+        var t = d3.select(id).append("div") 
+            .attr("id", id + id); 
+        
+        var entry = attr_info[sliderList[i]]
+        var vals;
+        if (entry != null) { 
+            vals = entry["range"]; 
+        } else { 
+            var nums = masterCars.map(d => +d[sliderList[i]]);
+            vals = [d3.min(nums), d3.max(nums)];
+        }
 
-    slider.noUiSlider.on("update", d => filterToCarMPG(+slider.noUiSlider.get()[0], 
-                                                       +slider.noUiSlider.get()[1]))
+        var tooltipSlider = document.getElementById(id + id);
+        noUiSlider.create(tooltipSlider, {
+            start: [vals[0], vals[1]],
+            tooltips: [wNumb({decimals: 0}), wNumb({decimals: 0})],
+            connect: true,
+            range: {
+                'min': vals[0],
+                'max': vals[1]
+            }
+        });
+        tooltipSlider.noUiSlider.on("update", _ => {sendName([sliderList[i], vals]);})
+    }
   }
 
   function collect() {
@@ -270,7 +380,6 @@
   }
 
   function updateLegend() { 
-    legend1 = d3.select("#Legend1"); 
 
     var keys = [...Array(Math.min(4, cars.length)).keys()];
     var quartiles = d3.scaleLinear()
@@ -279,6 +388,7 @@
     keys = keys.map(k => quartiles(k));
     console.log(keys);
 
+    legend1 = d3.select("#Legend1"); 
     var circles1 = legend1.selectAll("circle")
         .data(keys)
         
@@ -352,6 +462,8 @@
       remakeGraph();
       makeLegend();
       updateLegend();
+      makeButtons();
+      makeSliders();
   }
 
 
@@ -370,6 +482,14 @@
       // Temp fix for now, refer to above comment for permanent fix.
       cars = masterCars.filter(d => d["Fuel Information.City mpg"] >= lb &&  d["Fuel Information.City mpg"] <= ub);
       update();
+  }
+
+  function sendName(attrAdj) { 
+      if (typeof attrAdj == "string") { 
+          attrAdj = [attrAdj.slice(0, attrAdj.lastIndexOf(",")), attrAdj.slice(attrAdj.lastIndexOf(",") + 1)]
+      }
+      queries.push(attrAdj);
+      console.log(queries);
   }
 
   function updateTooltip(id, x, y) { 
