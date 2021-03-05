@@ -103,6 +103,8 @@
 <script src="http://d3js.org/d3.v6.min.js"></script>
 
 <script>
+  // TODO: Email Prof in response regarding formatting. 
+
   let width = 960, height = 500;
   var margin = {top: 50, right: 20, bottom: 50, left: 50};
   var graphs = [d3.select("#Dimensions"), d3.select("#HighwayMPG-HP"), d3.select("#CityMPG-Volume")]
@@ -130,6 +132,10 @@
 
   var circleMin = 5, circleMax = 10;
 
+  //////////////////
+  // Data loading //
+  //////////////////
+
   async function ready() {
     masterCars = await d3.csv("cars.csv");
     cars = masterCars;
@@ -147,6 +153,10 @@
 
     init();
   }
+
+  ////////////////////////
+  // Input Construction //
+  ////////////////////////
 
   function makeButtons() { 
     var buttonList = query_attr.buttons; 
@@ -173,10 +183,7 @@
         }
     }
   }
-//   <div class="sliderBox">
-//         <b>Name</b>
-//         <div id="slider-tooltips"></div>
-//     </div>
+
   function makeSliders() { 
     var sliderList = query_attr.sliders; 
     sWraps = d3.selectAll(".cols")
@@ -212,6 +219,10 @@
         tooltipSlider.noUiSlider.on("update", _ => {sendName([sliderList[i], vals]);})
     }
   }
+
+  ///////////////////////////////
+  // Data Collections/Creation //
+  ///////////////////////////////
 
   function collect() {
     val = attr_key.pop(attr_key.length - 1);
@@ -270,6 +281,11 @@
     })
   }
 
+  //////////////////
+  // Graph Making //
+  //////////////////
+
+  // Axis 
   function initAxis() {
     for (var i = 0; i < 3; i++) { 
         graphs[i].graph.append("g")	
@@ -312,6 +328,7 @@
     }
   }
 
+  // Graph
   function remakeOneGraph(i) { 
     var graphInfo = graphs[i]
 
@@ -363,6 +380,8 @@
       }
   }
 
+
+  // Legends 
   function makeLegend() { 
     for (var i = 0; i < 2; i++) {
         legend = d3.select("#Legend" + (i + 1)); 
@@ -380,6 +399,7 @@
   }
 
   function updateLegend() { 
+    // TODO: Look into modularing this
 
     var keys = [...Array(Math.min(4, cars.length)).keys()];
     var quartiles = d3.scaleLinear()
@@ -447,6 +467,9 @@
     labels2.exit().remove();
   }
 
+  ////////////////////
+  // Main functions //
+  ////////////////////
   function update() { 
       collect(); 
       makeRanges(); 
@@ -467,7 +490,11 @@
   }
 
 
-  // Add switches to keep track of what has been pressed to adjust based on master. Use big update function to update switches and data. 
+  ///////////////
+  // Filtering //
+  ///////////////
+
+  // Refer class code to go about filtering 
   function filterToGasoline() { 
       cars = cars.filter(d => d["Fuel Information.Fuel Type"] == "Gasoline");
       update();
@@ -485,12 +512,21 @@
   }
 
   function sendName(attrAdj) { 
+      // TODO: This needs to be updated to update queries for filtering
+      // Plan: buttons blur out and sliders disable (max = min) when query doesnt apply to certain points anymore 
+      //       light up buttons that are selected 
+      //       buttons that can still work and are not selected are normal colors
+      //       update slider max and min as well
       if (typeof attrAdj == "string") { 
           attrAdj = [attrAdj.slice(0, attrAdj.lastIndexOf(",")), attrAdj.slice(attrAdj.lastIndexOf(",") + 1)]
       }
       queries.push(attrAdj);
       console.log(queries);
   }
+
+  /////////////
+  // Tooltip //
+  /////////////
 
   function updateTooltip(id, x, y) { 
       var data = masterCars[id]
