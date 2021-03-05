@@ -48,29 +48,15 @@
 <script>
   let width = 960, height = 500;
   var margin = {top: 50, right: 20, bottom: 50, left: 50};
-  var graphs = [{"graph": d3.select("#Dimensions"), "title": "Length vs Height vs Width of Car", "x": "Dimensions.Length", "y": "Dimensions.Height", "z": "Dimensions.Width"}, 
-                {"graph": d3.select("#HighwayMPG-HP"), "title": "Horsepower vs Highway MPG vs Fuel Type", "x": "Engine Information.Engine Statistics.Horsepower", "y": "Fuel Information.Highway mpg", "z": "Fuel Information.Fuel Type"},
-                {"graph": d3.select("#CityMPG-Volume"), "title": "Volume of Car vs City MPG", "x": "Volume", "y": "Fuel Information.City mpg", "z": null}] 
-  var attr_key = ["Dimensions.Length", "Dimensions.Height", "Dimensions.Width", "Fuel Information.Highway mpg", "Engine Information.Engine Statistics.Horsepower", "Fuel Information.City mpg", "Volume", "Fuel Information.Fuel Type"]
+  var graphs = [d3.select("#Dimensions"), d3.select("#HighwayMPG-HP"), d3.select("#CityMPG-Volume")]
+  var attr_key = []
   var attr_info = {}
-  var specials = {"Dimensions.Length": {"type": "x", "axis_title": "Length →"}, 
-                    "Dimensions.Height": {"type": "y", "axis_title": "↑ Height"}, 
-                    "Dimensions.Width": {"type": "size"}, 
-                    "Fuel Information.City mpg": {"type": "y", "axis_title": "↑ City MPG"}, 
-                    "Fuel Information.Highway mpg": {"type": "y", "axis_title": "↑ Highway MPG"}, 
-                    "Engine Information.Engine Statistics.Horsepower": {"type": "x", "axis_title": "Horsepower →"}, 
-                    "Volume": {"type": "x", "axis_title": "Volume →"}, 
-                    "Fuel Information.Fuel Type": {"type": "color"}}
        
   for (var i = 0; i < graphs.length; i++) { 
-      graphs[i].graph = graphs[i].graph
+      graphs[i] = graphs[i]
         .attr("width", width)
         .attr("height", height)
         .append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")")
-  }
-
-  for (var i = 0; i < attr_key.length; i++) { 
-    attr_info[attr_key[i]] = {"range": [], "scale": null, "axis": null, "label": "", "type": specials[attr_key[i]]["type"], "axis_title": specials[attr_key[i]]["axis_title"]}
   }
 
   var tooltip = d3.select("body").append("div") 
@@ -87,8 +73,13 @@
 
   async function ready() {
     masterCars = await d3.csv("cars.csv");
-    masterCars = masterCars.slice(0, 11);
     cars = masterCars;
+
+    attr_data = await d3.csv("attr_info.csv");
+    graph_info = await d3.csv("graph_info.csv");
+
+    attr_data.map(d => {attr_info[d.name] = d; attr_key.push(d.name)});
+    graphs = graph_info.map((d, i) => {d.graph = graphs[i]; return d;})
 
     var tooltip = d3.select("body").append("div") 
       .attr("class", "tooltip") 
@@ -177,20 +168,20 @@
             .call(attr_info[graphs[i].x]["axis"])
             .call(g => g.append("text")
                 .attr("x", width)
-                .attr("y", margin.bottom - 5)
+                .attr("y", margin.bottom - 10)
                 .attr("fill", "currentColor")
                 .attr("text-anchor", "end")
-                .text(attr_info[graphs[i].x]["axis_title"]));
+                .text(attr_info[graphs[i].x]["axis_title"] + " \u2192"));
 
         graphs[i].graph.append("g")
             .attr("id", "yAxis")	
             .call(attr_info[graphs[i].y]["axis"])
             .call(g => g.append("text")
-                .attr("x", -margin.left)
+                .attr("x", -margin.left/2)
                 .attr("y", -5)
                 .attr("fill", "currentColor")
                 .attr("text-anchor", "start")
-                .text(attr_info[graphs[i].y]["axis_title"]));
+                .text("\u2191 " + attr_info[graphs[i].y]["axis_title"]));
 
         graphs[i].graph.append("text")
             .attr("x", (width / 2))             
@@ -220,10 +211,12 @@
     mergeList = mergeList.map((val, i) => {return {"attr": attrList[i], "key": val}});
     mergeList = mergeList.map(function (obj) { 
         var key = obj.key, res = {"attr": obj.attr, "val": d => {return attr_info[key]["scale"](+d[key])}};
-        if (obj.attr == "r" && (key == null || attr_info[key].type != "size")) { 
+        if (obj.attr == "r" && (attr_info[key] == null || attr_info[key].type != "size")) { 
             res.val = "5";
-        } else if (obj.attr == "fill" && (key == null || attr_info[key].type != "color")) { 
+        } else if (obj.attr == "fill" && (attr_info[key] == null || attr_info[key].type != "color")) { 
             res.val = "white";
+        } else if (obj.attr == "fill") { 
+            res.val = d => {return attr_info[key]["scale"](d[key])};
         }
         return res;
     }) 
@@ -279,11 +272,7 @@
   function updateLegend() { 
     legend1 = d3.select("#Legend1"); 
 
-    // Quick fix: will probably not get away with this
-    //legend1.selectAll("*").remove(); 
-    // makeLegend();
-
-    var keys = [0, 1, 2, 3];
+    var keys = [...Array(Math.min(4, cars.length)).keys()];
     var quartiles = d3.scaleLinear()
         .domain([0, 3])	
         .range([attr_info[graphs[0].z]["range"][0], attr_info[graphs[0].z]["range"][1]]);
@@ -317,9 +306,6 @@
     labels1.exit().remove();
 
     legend2 = d3.select("#Legend2"); 
-
-    // Here too
-    // legend2.selectAll("*").remove();
 
     keys = attr_info[graphs[1].z]["range"];
 
