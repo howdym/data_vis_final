@@ -9,7 +9,7 @@
     .cols { 
         display: flex;
         width: 350px;
-        /* height: 100vh; */
+        height: 130vh; 
         flex-direction: column;
         justify-content: space-evenly;
     }
@@ -27,8 +27,9 @@
     }
 
     .noUi-target { 
-        width: 260px;
-        margin-bottom: 5px;
+        height: 150px;
+        margin-bottom: 20px;
+        margin-right: 5px;
     }
 
     .noUi-horizontal .noUi-handle { 
@@ -45,22 +46,29 @@
     .legend { 
         height: 200px; 
         width: 190px;
+        margin-top: 35px;
     }
 
     .sliderBox { 
         display: flex;
+        flex-wrap: wrap;
+        width: 350px;
+    }
+
+    .sliders { 
+        display: flex;
         flex-direction: column;
         justify-content: space-between;
-        height: 100px; 
-        width: 350px;
-        border-color: black;
-        border-style: solid;
+        height: 225px; 
+        width: 80px;
         flex-wrap: wrap;
-        align-content: center;
+        align-items: flex-end;
+        word-wrap: break-word;
     }
 
     b { 
         text-align: center;
+        align-self: center;
     }
 
     .buttons { 
@@ -209,11 +217,12 @@
   }
 
   function makeSliders() { 
+    query_attr.sliders = query_attr.sliders.reverse()
     var sliderList = query_attr.sliders; 
-    sWraps = d3.selectAll(".cols")
+    sWraps = d3.selectAll(".cols").append("div").attr("class", "sliderBox")
     query_attr.sliders = sliderList.map(function (d, i) {
-        bWraps.append("div")
-            .attr("class", "sliderBox") 
+        d3.selectAll(".cols").select(".sliderBox").append("div")
+            .attr("class", "sliders") 
             .attr("id", String.fromCharCode(i + 97))
             .html("<b>" + d.slice(d.lastIndexOf(".") + 1) + "</b>");
         
@@ -233,7 +242,7 @@
         var tooltipSlider = document.getElementById(id + id);
         noUiSlider.create(tooltipSlider, {
             start: [vals[0], vals[1]],
-            //orientation: "vertical",
+            orientation: "vertical",
             tooltips: [wNumb({decimals: 0}), wNumb({decimals: 0})],
             connect: true,
             range: {
@@ -250,7 +259,6 @@
 
   function updateSliders(skip) { 
     var sliderList = query_attr.sliders; 
-    sWraps = d3.selectAll(".cols")
     sliderList.map(function (d, i) {
         var id = d.id; 
         var d = d.name; 
