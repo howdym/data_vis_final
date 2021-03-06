@@ -70,6 +70,13 @@
         width: 350px; 
         flex-wrap: wrap;
     }
+
+    /* #graphs { 
+        display: flex; 
+        flex-wrap: wrap;
+        width: 75%;
+        height: 100vh; 
+    } */
     
 </style>
 
@@ -161,54 +168,72 @@
   function makeButtons() { 
     var buttonList = query_attr.buttons; 
     bWraps = d3.selectAll(".cols")
-    for (var i = 0; i < buttonList.length; i++) { 
+    query_attr.buttons = buttonList.map(function(d, i) { 
         bWraps.append("div")
             .attr("class", "buttonBox") 
             .attr("id", String.fromCharCode(i + 65))
-            .html("<b>" + buttonList[i].slice(buttonList[i].lastIndexOf(".") + 1) + "</b>");
+            .html("<b>" + d.slice(d.lastIndexOf(".") + 1) + "</b>");
         
         var id = "#" + String.fromCharCode(i + 65);
         var t = d3.select(id).append("div") 
             .attr("class", "buttons"); 
-        
-        var options = [... new Set(masterCars.map(d => d[buttonList[i]]))];
+        var res = {"name": d, "id": id};
+        return res;
+    })
+    updateButtons();
+  }
 
-        for (var j = 0; j < options.length; j++) {
-            var input = [buttonList[i], options[j]];
-            d3.select(id).select(".buttons").append("input") 
-                .attr("type", "Button") 
-                .attr("value", options[j])
-                .attr("id", buttonList[i] + ", " + options[j])
-                .attr("onClick", "sendName(this.id)");
-        }
-    }
+  function updateButtons() { 
+    query_attr.buttons.map(function (d, i) {
+        var id = d.id; 
+        var d = d.name;
+        var options = [... new Set(cars.map(g => g[d]))];
+        options = options.map(f => {return {"name": f, "val": f}});
+        var buttons= d3.select(id).select(".buttons").selectAll("input")
+            .data(options, e => {return e.name})
+        
+        buttons.exit()
+            .attr("value", p => p.name) 
+            .attr("id", p => d + ", " + p.name)
+            .attr("disabled", true);
+        
+        buttons.enter()
+            .append("input") 
+            .attr("type", "Button")
+            .attr("onClick", "sendName(this.id)")
+            .merge(buttons) 
+                .attr("value", p => p.name)
+                .attr("id", p => d + ", " + p.name)
+                .attr("disabled", null);
+    })
   }
 
   function makeSliders() { 
     var sliderList = query_attr.sliders; 
     sWraps = d3.selectAll(".cols")
-    for (var i = 0; i < sliderList.length; i++) { 
+    query_attr.sliders = sliderList.map(function (d, i) {
         bWraps.append("div")
             .attr("class", "sliderBox") 
             .attr("id", String.fromCharCode(i + 97))
-            .html("<b>" + sliderList[i].slice(sliderList[i].lastIndexOf(".") + 1) + "</b>");
+            .html("<b>" + d.slice(d.lastIndexOf(".") + 1) + "</b>");
         
         var id = "#" + String.fromCharCode(i + 97);
         var t = d3.select(id).append("div") 
             .attr("id", id + id); 
         
-        var entry = attr_info[sliderList[i]]
+        var entry = attr_info[d]
         var vals;
         if (entry != null) { 
             vals = entry["range"]; 
         } else { 
-            var nums = masterCars.map(d => +d[sliderList[i]]);
+            var nums = masterCars.map(g => +g[d]);
             vals = [d3.min(nums), d3.max(nums)];
         }
 
         var tooltipSlider = document.getElementById(id + id);
         noUiSlider.create(tooltipSlider, {
             start: [vals[0], vals[1]],
+            //orientation: "vertical",
             tooltips: [wNumb({decimals: 0}), wNumb({decimals: 0})],
             connect: true,
             range: {
@@ -216,8 +241,47 @@
                 'max': vals[1]
             }
         });
-        tooltipSlider.noUiSlider.on("update", _ => {sendName([sliderList[i], vals]);})
-    }
+        tooltipSlider.noUiSlider.on("end", d => filterToCarMPG(+tooltipSlider.noUiSlider.get()[0], 
+                                                               +tooltipSlider.noUiSlider.get()[1]));
+        //tooltipSlider.noUiSlider.on("update", _ => {sendName([d, vals]);})
+        return {"name": d, "id": id + id};
+    });
+  }
+
+  function updateSliders(skip) { 
+    var sliderList = query_attr.sliders; 
+    sWraps = d3.selectAll(".cols")
+    sliderList.map(function (d, i) {
+        var id = d.id; 
+        var d = d.name; 
+
+        if (d != skip) {
+            var entry = attr_info[d]
+            var vals;
+            if (entry != null) { 
+                vals = entry["range"]; 
+            } else { 
+                var nums = masterCars.map(g => +g[d]);
+                vals = [d3.min(nums), d3.max(nums)];
+            }
+
+            var tooltipSlider = document.getElementById(id); 
+            if (vals[0] == vals[1]) { 
+                tooltipSlider.setAttribute('disabled', true);
+            } else { 
+                tooltipSlider.setAttribute('disabled', true);
+                tooltipSlider.removeAttribute('disabled');
+            }
+
+            tooltipSlider.noUiSlider.updateOptions({
+                range: {
+                    'min': vals[0],
+                    'max': vals[1]
+                }
+            });
+            tooltipSlider.noUiSlider.set(vals);
+        }
+    });
   }
 
   ///////////////////////////////
@@ -461,6 +525,7 @@
             .style("alignment-baseline", "middle")
             .attr("y", function(d,i){ return 100 + i*25}) // 100 is where the first dot appears. 25 is the distance between dots
             .attr("id", "labels") 
+            .attr("class", "small")
         .merge(labels2)
             .attr("fill", function(d, i) { return attr_info[graphs[1].z]["scale"](d)})
             .text(function(d, i) { return d});
@@ -476,6 +541,8 @@
       updateAxis();
       remakeGraph();
       updateLegend();
+      updateButtons(); 
+      // do update sliders in the filter funciton
   }
 
   function init() { 
@@ -509,6 +576,7 @@
       // Temp fix for now, refer to above comment for permanent fix.
       cars = masterCars.filter(d => d["Fuel Information.City mpg"] >= lb &&  d["Fuel Information.City mpg"] <= ub);
       update();
+      updateSliders("Fuel Information.City mpg");
   }
 
   function sendName(attrAdj) { 
@@ -517,8 +585,11 @@
       //       light up buttons that are selected 
       //       buttons that can still work and are not selected are normal colors
       //       update slider max and min as well
+      //       don't update what is currently changing
+      //       DO NOT propogate any changes back to filter. just change the appearance
+
       if (typeof attrAdj == "string") { 
-          attrAdj = [attrAdj.slice(0, attrAdj.lastIndexOf(",")), attrAdj.slice(attrAdj.lastIndexOf(",") + 1)]
+          attrAdj = [attrAdj.slice(0, attrAdj.lastIndexOf(",")), attrAdj.slice(attrAdj.lastIndexOf(",") + 2)]
       }
       queries.push(attrAdj);
       console.log(queries);
