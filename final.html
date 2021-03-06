@@ -241,9 +241,9 @@
                 'max': vals[1]
             }
         });
-        tooltipSlider.noUiSlider.on("end", d => filterToCarMPG(+tooltipSlider.noUiSlider.get()[0], 
-                                                               +tooltipSlider.noUiSlider.get()[1]));
-        //tooltipSlider.noUiSlider.on("update", _ => {sendName([d, vals]);})
+        // tooltipSlider.noUiSlider.on("end", d => filterToCarMPG(+tooltipSlider.noUiSlider.get()[0], 
+        //                                                        +tooltipSlider.noUiSlider.get()[1]));
+        tooltipSlider.noUiSlider.on("update", _ => {sendName([d, vals]);})
         return {"name": d, "id": id + id};
     });
   }
