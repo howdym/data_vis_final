@@ -619,6 +619,7 @@
   function filterToGasoline() { 
       cars = cars.filter(d => d["Fuel Information.Fuel Type"] == "Gasoline");
       update();
+      updateSliders("Fuel Information.Fuel Type");
   }
 
   function filterToE85() { 
