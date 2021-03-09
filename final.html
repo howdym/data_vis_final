@@ -227,7 +227,9 @@
       updateAxis();
       remakeGraph();
       updateLegend();
-      updateButtons(); 
+
+      // No need to remove the buttons 
+      // updateButtons(); 
       // do update sliders in the filter funciton
   }
 
@@ -403,12 +405,13 @@
                 tooltipSlider.removeAttribute('disabled');
             }
 
-            tooltipSlider.noUiSlider.updateOptions({
-                range: {
-                    'min': vals[0],
-                    'max': vals[1]
-                }
-            });
+            // Only update values. 
+            // tooltipSlider.noUiSlider.updateOptions({
+            //     range: {
+            //         'min': vals[0],
+            //         'max': vals[1]
+            //     }
+            // });
             tooltipSlider.noUiSlider.set(vals);
         }
     });
@@ -597,8 +600,6 @@
   }
 
   function updateLegend() { 
-    // TODO: Look into modularing this
-
     // TODO: Make values more human readable (ie. round to 10s)
     var keys = [...Array(Math.min(4, cars.length)).keys()];
     var quartiles = d3.scaleLinear()
