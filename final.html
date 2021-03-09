@@ -119,7 +119,9 @@
     <!-- Library to help slider stuff -->
     <script type="text/javascript" src="https://unpkg.com/wnumb@1.2.0/wNumb.js"></script>
 
-    <div class="bar"></div>
+    <div class="bar">
+        <button type="button" class="btn btn-danger" onclick="reset()">Reset</button>
+    </div>
     <div class="rows">
         <div id="graphs">
             <div class="rows">
@@ -360,6 +362,8 @@
                 'max': vals[1]
             }
         });
+
+        // For testing only 
         // tooltipSlider.noUiSlider.on("end", d => filterToCarMPG(+tooltipSlider.noUiSlider.get()[0], 
         //                                                        +tooltipSlider.noUiSlider.get()[1]));
         tooltipSlider.noUiSlider.on("update", _ => {sendName([d, [+tooltipSlider.noUiSlider.get()[0], 
@@ -686,6 +690,15 @@
       cars = masterCars.filter(d => d["Fuel Information.City mpg"] >= lb &&  d["Fuel Information.City mpg"] <= ub);
       update();
       updateSliders("Fuel Information.City mpg");
+  }
+
+  function reset() { 
+      cars = [... masterCars] 
+      update();
+      updateSliders(null);
+
+      $("select").val('default');
+      $("select").selectpicker("refresh");
   }
 
   function sendName(attrAdj, where) { 
