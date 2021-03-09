@@ -50,7 +50,7 @@
     /* For Legend */
     .legend { 
         height: 200px; 
-        width: 190px;
+        width: 90px;
         margin-top: 35px;
     }
 
@@ -59,6 +59,7 @@
         display: flex;
         flex-wrap: wrap;
         width: 350px;
+        float: right;
     }
 
     /* For formatting */
@@ -66,11 +67,12 @@
         display: flex;
         flex-direction: column;
         justify-content: space-between;
-        height: 225px; 
+        height: 240px; 
         width: 80px;
         flex-wrap: wrap;
         align-items: flex-end;
         word-wrap: break-word;
+        margin-right: 5px;
     }
 
     /* For formatting text */
@@ -88,16 +90,26 @@
         flex-wrap: wrap;
     }
 
-    /* #graphs { 
+    #dropdown { 
+        float: none;
+        display: inline-block;
+        margin-left: 0;
+    }
+
+    .sliderSet { 
+        width: 400px; 
+    }
+
+    #graphs { 
         display: flex; 
-        flex-wrap: wrap;
-        width: 75%;
-        height: 100vh; 
-    } */
+        flex-wrap: wrap; 
+    }
     
 </style>
 
 <head> 
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.13.1/css/bootstrap-select.css"/>
     <link href="nouislider.min.css" rel="stylesheet">
 </head>
 
@@ -107,31 +119,40 @@
     <!-- Library to help slider stuff -->
     <script type="text/javascript" src="https://unpkg.com/wnumb@1.2.0/wNumb.js"></script>
 
+    <div class="bar"></div>
     <div class="rows">
         <div id="graphs">
             <div class="rows">
                 <svg id="Dimensions"></svg>
                 <svg id="Legend1" class="legend"></svg>
             </div>
+            <svg id="CityMPG-Volume"></svg>
             <div class="rows">
                 <svg id="HighwayMPG-HP"></svg>
                 <svg id="Legend2" class="legend"></svg>
             </div>
-            <svg id="CityMPG-Volume"></svg>
         </div>
+        <div class="sliderSet"></div>
+    </div>
 
-        <div class="cols"></div>
+    <div class="dropdown" id="dropdown">
+        <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+          Sliders
+        </button>
+        <div class="dropdown-menu dropdown-menu-right" id="dropdown-menu" aria-labelledby="dropdownMenuButton">
+        </div>
     </div>
     
-    
+    <script src="http://d3js.org/d3.v6.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.13.1/js/bootstrap-select.min.js"></script>
 </body>
 
-<script src="http://d3js.org/d3.v6.min.js"></script>
-
-<script>
-  let width = 960, height = 500;
+<script> 
   var margin = {top: 50, right: 20, bottom: 50, left: 50};
   var graphs = [d3.select("#Dimensions"), d3.select("#HighwayMPG-HP"), d3.select("#CityMPG-Volume")]
+  var height = 333;
 
   //   Columns that we want
   var attr_key = []
@@ -144,24 +165,11 @@
 
   // List of queries to filter on. 
   var queries = []
-      
-  // Initialize margin start for graphs
-  for (var i = 0; i < graphs.length; i++) { 
-      graphs[i] = graphs[i]
-        .attr("width", width)
-        .attr("height", height)
-        .append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")")
-  }
-
 
   // Initialize tooltip
   var tooltip = d3.select("body").append("div") 
       .attr("class", "tooltip") 
       .style("opacity", 0);
-
-  // True width and height for our graph
-  width = width - margin.left - margin.right;
-  height = height - margin.top - margin.bottom;
 
   // Mastercars stay the same. Cars get adjusted. 
   let masterCars, cars;
@@ -185,6 +193,18 @@
 
     // When above line is done, attr_key should have all the column names to be used to make the graph 
     // attr_info will be the name of the row as the key and the row as a dictionary as the value. 
+
+    // Initialize margin start for graphs
+    for (var i = 0; i < graphs.length; i++) { 
+        graphs[i] = graphs[i]
+            .attr("width", +attr_info[graph_info[i].x].width)
+            .attr("height", height)
+            .append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+        // True width and height for our graph
+        attr_info[graph_info[i].x].width = +attr_info[graph_info[i].x].width - margin.left - margin.right;
+    }
+
+    height = height - margin.top - margin.bottom;
 
     graphs = graph_info.map((d, i) => {d.graph = graphs[i]; return d;})
 
@@ -237,16 +257,26 @@
 
   function makeButtons() { 
     var buttonList = query_attr.buttons; 
-    bWraps = d3.selectAll(".cols")
+    bWraps = d3.selectAll(".bar")
     query_attr.buttons = buttonList.map(function(d, i) { 
-        bWraps.append("div")
-            .attr("class", "buttonBox") 
+        var title = d.slice(d.lastIndexOf(".") + 1)
+        var shand = title.split(" "); 
+        if (shand.length >= 2) { 
+            shand = shand.splice(-2); 
+            shand = shand[0] + " " + shand[1]
+        } else { 
+            shand = shand[0];
+        }
+        bWraps.append("select")
+            .attr("class", "selectpicker") 
+            .attr("multiple", true)
+            .attr("data-live-search", "true")
+            .attr("title", title)
+            .attr("data-prefix", shand + ": ")
+            .attr("data-placeholder", shand + ": ")
             .attr("id", String.fromCharCode(i + 65))
-            .html("<b>" + d.slice(d.lastIndexOf(".") + 1) + "</b>");
         
         var id = "#" + String.fromCharCode(i + 65);
-        var t = d3.select(id).append("div") 
-            .attr("class", "buttons"); 
         var res = {"name": d, "id": id};
         return res;
     })
@@ -258,39 +288,57 @@
         var id = d.id; 
         var d = d.name;
         var options = [... new Set(cars.map(g => g[d]))];
+
         options = options.map(f => {return {"name": f, "val": f}});
-        var buttons = d3.select(id).select(".buttons").selectAll("input")
+        var buttons = d3.select(id).selectAll("option")
             .data(options, e => {return e.name})
         
-        buttons.exit()
-            .attr("value", p => p.name) 
-            .attr("id", p => d + ", " + p.name)
-            .attr("disabled", true);
+        buttons.exit().remove();
         
         buttons.enter()
-            .append("input") 
-            .attr("type", "Button")
-            .attr("onClick", "sendName(this.id)")
-            .merge(buttons) 
-                .attr("value", p => p.name)
-                .attr("id", p => d + ", " + p.name)
-                .attr("disabled", null);
+            .append("option")
+            .merge(buttons)
+                .attr("value", p => d + ", " + p.name)
+                .html(p => p.name);
+        
+        $(id).selectpicker('refresh');
+        $(id).selectpicker('render');
+        
+        // For testing 
+        // $(id).change(filterToE85);
+        $(id).change(_ => sendName($(id).val(), 0));
     })
+
+    $("select").each(function() {
+        $(this).selectpicker({
+            noneSelectedText : $(this).data('placeholder')
+        });
+        $(this).on('changed.bs.select', function (e, clickedIndex, isSelected, previousValue) {
+            var $title = $(this).parent().find('.filter-option-inner-inner');
+            if ($(this).parent().find('.bs-placeholder').length === 0) {
+                $title.text($(this).data('prefix') + $title.text());
+            } else {
+                $title.text($(this).data('placeholder'));
+            }
+        });
+    });
   }
 
   function makeSliders() { 
     query_attr.sliders = query_attr.sliders//.reverse()
     var sliderList = query_attr.sliders; 
-    sWraps = d3.selectAll(".cols").append("div").attr("class", "sliderBox")
+    sWraps = d3.selectAll(".sliderSet").append("div").attr("class", "sliderBox")
     query_attr.sliders = sliderList.map(function (d, i) {
-        d3.selectAll(".cols").select(".sliderBox").append("div")
+        d3.selectAll(".sliderSet").select(".sliderBox").append("div")
             .attr("class", "sliders") 
             .attr("id", String.fromCharCode(i + 97))
             .html("<b>" + d.slice(d.lastIndexOf(".") + 1) + "</b>");
         
         var id = "#" + String.fromCharCode(i + 97);
         var t = d3.select(id).append("div") 
-            .attr("id", id + id); 
+            .attr("id", String.fromCharCode(i + 97) + String.fromCharCode(i + 97)); 
+        
+        id = String.fromCharCode(i + 97) + String.fromCharCode(i + 97);
         
         var entry = attr_info[d]
         var vals;
@@ -301,7 +349,7 @@
             vals = [d3.min(nums), d3.max(nums)];
         }
 
-        var tooltipSlider = document.getElementById(id + id);
+        var tooltipSlider = document.getElementById(id);
         noUiSlider.create(tooltipSlider, {
             start: [vals[0], vals[1]],
             orientation: "vertical",
@@ -315,9 +363,17 @@
         // tooltipSlider.noUiSlider.on("end", d => filterToCarMPG(+tooltipSlider.noUiSlider.get()[0], 
         //                                                        +tooltipSlider.noUiSlider.get()[1]));
         tooltipSlider.noUiSlider.on("update", _ => {sendName([d, [+tooltipSlider.noUiSlider.get()[0], 
-                                                                  +tooltipSlider.noUiSlider.get()[1]]])})
-        return {"name": d, "id": id + id};
+                                                                  +tooltipSlider.noUiSlider.get()[1]]], 1)})
+        return {"name": d, "id": id};
     });
+
+    var element = document.getElementById("dropdown-menu"); 
+    var curr = document.getElementsByClassName("sliderSet")[0]; 
+    element.appendChild(curr); 
+
+    element = document.getElementById("dropdown"); 
+    var bar = document.getElementsByClassName("bar")[0]; 
+    bar.appendChild(element);
 
     // This is an idea of what it would look like after init the buttons and sliders. 
     // query_attr = ["buttons": [{"name": blah, "id": A}]], "sliders": [{"name": "dimension.height", id: "#a#a"}]
@@ -384,7 +440,7 @@
     var scale, axis, rlist; 
 
     if (attr_info[key]["type"] == "x") {
-        rlist = [offset, width - offset];
+        rlist = [offset, +attr_info[key].width - offset];
     } else if (attr_info[key]["type"] == "y") {
         rlist = [height - offset, offset]; 
     } else if (attr_info[key]["type"] == "size") {
@@ -433,7 +489,7 @@
             .attr("id", "xAxis")
             .call(attr_info[graphs[i].x]["axis"])
             .call(g => g.append("text")
-                .attr("x", width)
+                .attr("x", attr_info[graphs[i].x].width)
                 .attr("y", margin.bottom - 10)
                 .attr("fill", "currentColor")
                 .attr("text-anchor", "end")
@@ -450,7 +506,7 @@
                 .text("\u2191 " + attr_info[graphs[i].y]["axis_title"]));
 
         graphs[i].graph.append("text")
-            .attr("x", (width / 2))             
+            .attr("x", (attr_info[graphs[i].x].width / 2))             
             .attr("y", 0 - (margin.top / 2))
             .attr("text-anchor", "middle")  
             .style("font-size", "16px")  
@@ -607,7 +663,7 @@
             .attr("class", "small")
         .merge(labels2)
             .attr("fill", function(d, i) { return attr_info[graphs[1].z]["scale"](d)})
-            .text(function(d, i) { return d});
+            .text(function(d, i) {var temp = d.split(" "); return (temp.length >= 2) ? temp.splice(-2).join(" ") : d});
     labels2.exit().remove();
   }
 
@@ -634,7 +690,7 @@
       updateSliders("Fuel Information.City mpg");
   }
 
-  function sendName(attrAdj) { 
+  function sendName(attrAdj, where) { 
       // TODO: This needs to be updated to update queries for filtering
       // Plan: buttons blur out and sliders disable (max = min) when query doesnt apply to certain points anymore 
       //       light up buttons that are selected 
@@ -643,10 +699,11 @@
       //       don't update what is currently changing
       //       DO NOT propogate any changes back to filter. just change the appearance
 
-      if (typeof attrAdj == "string") { 
-          attrAdj = [attrAdj.slice(0, attrAdj.lastIndexOf(",")), attrAdj.slice(attrAdj.lastIndexOf(",") + 2)]
+      if (where == 0) { 
+          attrAdj = attrAdj.map(d => queries.push([d.slice(0, d.lastIndexOf(",")), d.slice(d.lastIndexOf(",") + 2)]));
+      } else { 
+          queries.push(attrAdj);
       }
-      queries.push(attrAdj);
       console.log(queries);
   }
 
