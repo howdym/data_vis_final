@@ -147,6 +147,8 @@
 
     //dictionary of keys and filtering information
     var filtered = {}
+    var filteredButtons = []
+    var filteredSliders = {}
 
     // Initialize margin start for graphs
     for (var i = 0; i < graphs.length; i++) {
@@ -265,8 +267,8 @@
 
             var buttons = d3.select(id).select(".buttons").selectAll("input")
                 .data(options, e => {
-                    //initalized array of [not filtered, button] as [0,0] for button, for slider [not filtered, slider, total_range, current_range] is [0,1,x,x] where x is total range
-                    filtered[e.name] = [0, 0]
+                    //initalized array of [not filtered, button] as [false, "button"] for button, for slider [not filtered, slider, total_range, current_range] is [0,1,x,x] where x is total range
+                    filtered[e.name] = ["button", d]
                     return e.name
                 })
 
@@ -278,13 +280,17 @@
             buttons.enter()
                 .append("input")
                 .attr("type", "Button")
-                .attr("onClick", "sendName(this.id)")
+                .attr("onClick", "buttonClick(this.value)")
                 .merge(buttons)
                 .attr("value", p => p.name)
                 .attr("id", p => d + ", " + p.name)
                 .attr("disabled", null);
         })
     }
+
+
+
+
 
     function makeSliders() {
         query_attr.sliders = query_attr.sliders//.reverse()
@@ -308,9 +314,9 @@
                 var nums = masterCars.map(g => +g[d]);
                 vals = [d3.min(nums), d3.max(nums)];
             }
-            //find range value for d and save [not filtered, slider, total_range, current_range] as [0,1,x,x] where x is total range
+            //find range value for d and save [slider, total_range] as ["slider" ,x] where x is total range
             var range_filter = vals[1] - vals[0];
-            filtered[d] = [0, 1, range_filter, range_filter];
+            filtered[d] = ["slider", range_filter];
 
             var tooltipSlider = document.getElementById(id + id);
             noUiSlider.create(tooltipSlider, {
@@ -325,13 +331,13 @@
             });
             // tooltipSlider.noUiSlider.on("end", d => filterToCarMPG(+tooltipSlider.noUiSlider.get()[0], 
             //                                                        +tooltipSlider.noUiSlider.get()[1]));
-            tooltipSlider.noUiSlider.on("update", _ => {
-                sendName([d, [+tooltipSlider.noUiSlider.get()[0],
-                +tooltipSlider.noUiSlider.get()[1]]])
+            tooltipSlider.noUiSlider.on("end", _ => {
+                sliderChange(d, +tooltipSlider.noUiSlider.get()[0],
+                    +tooltipSlider.noUiSlider.get()[1])
             })
             return { "name": d, "id": id + id };
         });
-        console.log("test");
+        console.log("filtered test");
         console.log(filtered)
         // This is an idea of what it would look like after init the buttons and sliders. 
         // query_attr = ["buttons": [{"name": blah, "id": A}]], "sliders": [{"name": "dimension.height", id: "#a#a"}]
@@ -370,6 +376,64 @@
                 tooltipSlider.noUiSlider.set(vals);
             }
         });
+    }
+    function sliderChange(d, start, end) {
+        sliderVals = filtered[d]
+        var range = end - start
+        console.log(range)
+        console.log(sliderVals)
+        if (range == sliderVals[1]) {
+            delete filteredSliders.d
+            console.log("delete");
+        } else {
+            filteredSliders[d] = [start, end]
+        }
+        console.log(filteredSliders);
+        filterData();
+    }
+
+    function buttonClick(button) {
+        console.log(filtered)
+        if (filteredButtons.includes(button)) { //was pressed -> now not pressed
+            var index = filteredButtons.indexOf(button);
+            filteredButtons.splice(index, 1);
+            console.log("should splice")
+        } else {
+            filteredButtons.push(button)
+        }
+
+        filterData();
+    }
+
+    function filterData() {
+        cars = masterCars
+        if (filteredButtons.length == 0) {
+            update();
+        } else {
+
+            const filterButton = filteredButtons.map(
+                function (e) {
+                    console.log(e)
+                    buttonVal = filtered[e]
+                    colName = buttonVal[1]
+                    cars = cars.filter(d => d[colName] == e);
+                    update();
+                    updateSliders(colName);
+                }
+            );
+        }
+        if (Object.keys(filteredSliders)) {
+            const filterSlider = Object.keys(filteredSliders).map(
+                function (e) {
+                    console.log(e)
+                    bounds = filteredSliders[e]
+                    console.log(bounds)
+                    cars = masterCars.filter(d => d[e] >= bounds[0] && d[e] <= bounds[1]);
+                    update();
+                }
+            )
+        }
+        console.log(filteredButtons)
     }
 
     ///////////////////////////////
