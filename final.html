@@ -597,8 +597,6 @@
   }
 
   function updateLegend() { 
-    // TODO: Look into modularing this
-
     // TODO: Make values more human readable (ie. round to 10s)
     var keys = [...Array(Math.min(4, cars.length)).keys()];
     var quartiles = d3.scaleLinear()
