@@ -691,6 +691,15 @@
       updateSliders("Fuel Information.City mpg");
   }
 
+  function reset() { 
+      cars = [... masterCars] 
+      update();
+      updateSliders(null);
+
+      $("select").val('default');
+      $("select").selectpicker("refresh");
+  }
+
   function sendName(attrAdj, where) { 
       // TODO: This needs to be updated to update queries for filtering
       // Plan: buttons blur out and sliders disable (max = min) when query doesnt apply to certain points anymore 
