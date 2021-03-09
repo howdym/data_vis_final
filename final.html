@@ -121,6 +121,9 @@
         </div>
 
         <div class="cols"></div>
+        <div class="filterInfo">
+            <b>Currently Filtering on:</b>
+        </div>
     </div>
 
 
@@ -239,6 +242,26 @@
     ////////////////////////
     // Input Construction //
     ////////////////////////
+
+    function updateFilterInfo() {
+        f = d3.selectAll(".filterInfo")
+        d3.select(".filterInfo").selectAll("*").remove();
+        f.append("div")
+            .html("<b>" + "Currently Filtering on:" + "<b>");
+        const filterOutput = filteredButtons.map(function (d) {
+            f.append("div")
+                .html("<p>" + d + "<p>");
+
+        });
+        const filterSlider = Object.keys(filteredSliders).map(function (d) {
+            var bounds = filteredSliders[d]
+            var sliderName = d.split('.')[1];
+            f.append("div")
+                .html("<p>" + sliderName + ": [" + bounds + "] " + "<p>");
+        }
+
+        );
+    }
 
     function makeButtons() {
         var buttonList = query_attr.buttons;
@@ -428,12 +451,15 @@
                     console.log(e)
                     bounds = filteredSliders[e]
                     console.log(bounds)
-                    cars = masterCars.filter(d => d[e] >= bounds[0] && d[e] <= bounds[1]);
+                    cars = cars.filter(d => d[e] >= bounds[0] && d[e] <= bounds[1]);
                     update();
+                    updateSliders(e);
                 }
             )
         }
         console.log(filteredButtons)
+        console.log(filteredSliders)
+        updateFilterInfo();
     }
 
     ///////////////////////////////
