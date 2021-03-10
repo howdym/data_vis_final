@@ -247,17 +247,20 @@
         f = d3.selectAll(".filterInfo")
         d3.select(".filterInfo").selectAll("*").remove();
         f.append("div")
-            .html("<b>" + "Currently Filtering on:" + "<b>");
+            .html("<b>" + "Currently Filtering on:" + "</b>");
         const filterOutput = filteredButtons.map(function (d) {
+            var buttonInfo = filtered[d]
+            var buttonCat = buttonInfo[1]
+            var buttonCategory = buttonCat.split('.')[1];
             f.append("div")
-                .html("<p>" + d + "<p>");
+                .html("<p>" + "<u>" + buttonCategory + "</u>" + ": " + d + "</p>");
 
         });
         const filterSlider = Object.keys(filteredSliders).map(function (d) {
             var bounds = filteredSliders[d]
             var sliderName = d.split('.')[1];
             f.append("div")
-                .html("<p>" + sliderName + ": [" + bounds + "] " + "<p>");
+                .html("<p>" + "<u>" + sliderName + "</u>" + ": [" + bounds + "] " + "</p>");
         }
 
         );
@@ -283,31 +286,33 @@
 
     function updateButtons() {
         query_attr.buttons.map(function (d, i) {
-            var id = d.id;
-            var d = d.name;
-            var options = [... new Set(cars.map(g => g[d]))];
-            options = options.map(f => { return { "name": f, "val": f } });
+            if (!filteredButtons.includes(d)) {
+                var id = d.id;
+                var d = d.name;
+                var options = [... new Set(cars.map(g => g[d]))];
+                options = options.map(f => { return { "name": f, "val": f } });
 
-            var buttons = d3.select(id).select(".buttons").selectAll("input")
-                .data(options, e => {
-                    //initalized array of [not filtered, button] as [false, "button"] for button, for slider [not filtered, slider, total_range, current_range] is [0,1,x,x] where x is total range
-                    filtered[e.name] = ["button", d]
-                    return e.name
-                })
+                var buttons = d3.select(id).select(".buttons").selectAll("input")
+                    .data(options, e => {
+                        //initalized array of [not filtered, button] as [false, "button"] for button, for slider [not filtered, slider, total_range, current_range] is [0,1,x,x] where x is total range
+                        filtered[e.name] = ["button", d]
+                        return e.name
+                    })
 
-            buttons.exit()
-                .attr("value", p => p.name)
-                .attr("id", p => d + ", " + p.name)
-                .attr("disabled", true);
+                buttons.exit()
+                    .attr("value", p => p.name)
+                    .attr("id", p => d + ", " + p.name)
+                    .attr("disabled", true);
 
-            buttons.enter()
-                .append("input")
-                .attr("type", "Button")
-                .attr("onClick", "buttonClick(this.value)")
-                .merge(buttons)
-                .attr("value", p => p.name)
-                .attr("id", p => d + ", " + p.name)
-                .attr("disabled", null);
+                buttons.enter()
+                    .append("input")
+                    .attr("type", "Button")
+                    .attr("onClick", "buttonClick(this.value)")
+                    .merge(buttons)
+                    .attr("value", p => p.name)
+                    .attr("id", p => d + ", " + p.name)
+                    .attr("disabled", null);
+            }
         })
     }
 
@@ -378,7 +383,7 @@
                 if (entry != null) {
                     vals = entry["range"];
                 } else {
-                    var nums = masterCars.map(g => +g[d]);
+                    var nums = cars.map(g => +g[d]);
                     vals = [d3.min(nums), d3.max(nums)];
                 }
 
@@ -389,7 +394,9 @@
                     tooltipSlider.setAttribute('disabled', true);
                     tooltipSlider.removeAttribute('disabled');
                 }
-
+                if (vals[0] == vals[1]) {
+                    vals[1] = vals[0] + .1
+                }
                 tooltipSlider.noUiSlider.updateOptions({
                     range: {
                         'min': vals[0],
@@ -397,6 +404,10 @@
                     }
                 });
                 tooltipSlider.noUiSlider.set(vals);
+            } else {
+
+                attr_info[d].range = filteredSliders[d];
+                console.log(attr_info[d].range);
             }
         });
     }
@@ -432,6 +443,7 @@
         cars = masterCars
         if (filteredButtons.length == 0) {
             update();
+            //updateSliders(null) - need some sort of reset sliders here
         } else {
 
             const filterButton = filteredButtons.map(
@@ -441,7 +453,7 @@
                     colName = buttonVal[1]
                     cars = cars.filter(d => d[colName] == e);
                     update();
-                    updateSliders(colName);
+                    updateSliders(null);
                 }
             );
         }
