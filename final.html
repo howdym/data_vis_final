@@ -5,6 +5,7 @@
     /* For formatting */
     .rows { 
         display: flex;
+        flex-wrap: wrap;
     }
 
     /* For formatting */
@@ -102,7 +103,16 @@
 
     #graphs { 
         display: flex; 
-        flex-wrap: wrap; 
+        flex-shrink: 2;
+    }
+
+    .curr { 
+        font-weight: bold !important;
+    }
+
+    .bar {
+        display: flex; 
+        flex-shrink: 2;
     }
     
 </style>
@@ -122,12 +132,19 @@
     <div class="bar">
         <button type="button" class="btn btn-danger" onclick="reset()">Reset</button>
     </div>
+
+    <div class="filterInfo">
+        <b>Currently Filtering on:</b>
+    </div>
+
     <div class="rows">
         <div id="graphs">
             <div class="rows">
                 <svg id="Dimensions"></svg>
                 <svg id="Legend1" class="legend"></svg>
             </div>
+        </div>
+        <div id="graphs">
             <svg id="CityMPG-Volume"></svg>
             <div class="rows">
                 <svg id="HighwayMPG-HP"></svg>
@@ -146,10 +163,6 @@
         </div>
     </div>
 
-    <div class="filterInfo">
-        <b>Currently Filtering on:</b>
-    </div>
-
     <script src="http://d3js.org/d3.v6.min.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.bundle.min.js"></script>
@@ -157,6 +170,7 @@
 </body>
 
 <script>
+    console.log(screen.width, screen.height);
     var margin = { top: 50, right: 20, bottom: 50, left: 50 };
     var graphs = [d3.select("#Dimensions"), d3.select("#HighwayMPG-HP"), d3.select("#CityMPG-Volume")]
     var height = 333;
@@ -299,21 +313,21 @@
         bWraps = d3.selectAll(".bar")
         query_attr.buttons = buttonList.map(function (d, i) {
             var title = d.slice(d.lastIndexOf(".") + 1)
-            var shand = title.split(" ");
-            if (shand.length >= 2) {
-                shand = shand.splice(-2);
-                shand = shand[0] + " " + shand[1]
-            } else {
-                shand = shand[0];
-            }
+            // var shand = title.split(" ");
+            // if (shand.length >= 2) {
+            //     shand = shand.splice(-2);
+            //     shand = shand[0] + " " + shand[1]
+            // } else {
+            //     shand = shand[0];
+            // }
             bWraps.append("select")
                 .attr("class", "selectpicker")
                 .attr("multiple", true)
                 .attr("data-live-search", "true")
                 .attr("title", title)
-                .attr("data-prefix", shand + ": ")
-                .attr("data-placeholder", shand + ": ")
                 .attr("id", String.fromCharCode(i + 65))
+                // .attr("data-prefix", shand + ": ")
+                // .attr("data-placeholder", shand + ": ")
 
             var id = "#" + String.fromCharCode(i + 65);
             var res = { "name": d, "id": id };
@@ -336,13 +350,19 @@
                     return e.name
                 })
 
-            buttons.exit().remove();
+            buttons.attr("class", "curr");
+            
+            buttons.exit().attr("class", "old");
 
             buttons.enter()
                 .append("option")
+                .attr("class", "new")
                 .merge(buttons)
-                .attr("value", p => p.name)
-                .html(p => p.name);
+                    .attr("value", p => p.name)
+                    //.html(p => p.name)
+                    .html(p => p.name);
+
+            
 
             $(id).selectpicker('refresh');
             $(id).selectpicker('render');
@@ -352,19 +372,19 @@
             $(id).change(_ => buttonClick($(id).val()));
         })
 
-        $("select").each(function () {
-            $(this).selectpicker({
-                noneSelectedText: $(this).data('placeholder')
-            });
-            $(this).on('changed.bs.select', function (e, clickedIndex, isSelected, previousValue) {
-                var $title = $(this).parent().find('.filter-option-inner-inner');
-                if ($(this).parent().find('.bs-placeholder').length === 0) {
-                    $title.text($(this).data('prefix') + $title.text());
-                } else {
-                    $title.text($(this).data('placeholder'));
-                }
-            });
-        });
+        // $("select").each(function () {
+        //     $(this).selectpicker({
+        //         noneSelectedText: $(this).data('placeholder')
+        //     });
+        //     $(this).on('changed.bs.select', function (e, clickedIndex, isSelected, previousValue) {
+        //         var $title = $(this).parent().find('.filter-option-inner-inner');
+        //         if ($(this).parent().find('.bs-placeholder').length === 0) {
+        //             $title.text($(this).data('prefix') + $title.text());
+        //         } else {
+        //             $title.text($(this).data('placeholder'));
+        //         }
+        //     });
+        // });
     }
 
     function makeSliders() {
