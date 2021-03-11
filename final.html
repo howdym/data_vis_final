@@ -476,12 +476,12 @@
                 if (vals[0] == vals[1]) {
                     vals[1] = vals[0] + .1
                 }
-                tooltipSlider.noUiSlider.updateOptions({
-                    range: {
-                        'min': vals[0],
-                        'max': vals[1]
-                    }
-                });
+                // tooltipSlider.noUiSlider.updateOptions({
+                //     range: {
+                //         'min': vals[0],
+                //         'max': vals[1]
+                //     }
+                // });
                 tooltipSlider.noUiSlider.set(vals);
             } else {
 
@@ -858,13 +858,14 @@
     /////////////
 
     function updateTooltip(id, x, y) {
+        var lr = (x < parseInt(screen.width / 2)) ? x : x - 275; 
         var data = masterCars[id]
         tooltip.html(data["Identification.ID"] + "<br>" + data["Engine Information.Transmission"] +
             "<br>Highway MPG: " + data["Fuel Information.Highway mpg"] + "<br>City MPG: " + data["Fuel Information.City mpg"] +
             "<br>Fuel Type: " + data["Fuel Information.Fuel Type"] + "<br>" + data["Engine Information.Engine Type"] + "<br>" +
             data["Engine Information.Driveline"] + "<br>LxWxH: " + data["Dimensions.Length"] + "x" + data["Dimensions.Width"] +
             "x" + data["Dimensions.Height"])
-            .style("left", (x + 5) + "px")
+            .style("left", (lr + 5) + "px")
             .style("top", (y - 30) + "px");
     }
 
