@@ -198,6 +198,7 @@
     var filtered = {}
     var filteredButtons = []
     var filteredSliders = {}
+    var filteredButtonCategories = {}
 
     // Initialize tooltip
     var tooltip = d3.select("body").append("div")
@@ -511,14 +512,35 @@
 
     function buttonClick(button) {
         console.log(filtered)
+        var buttonInformation = filtered[button]
+        var category = buttonInformation[1]
+        if (category in filteredButtonCategories) {
+            categoryButtons = filteredButtonCategories[category]
+        }
+        else {
+            categoryButtons = []
+        }
+
+
+
+
         if (filteredButtons.includes(button)) { //was pressed -> now not pressed
             var index = filteredButtons.indexOf(button);
             filteredButtons.splice(index, 1);
             console.log("should splice")
+            var index = categoryButtons.indexOf(button);
+            categoryButtons.splice(index, 1);
         } else {
             filteredButtons.push(button[0])
+            categoryButtons.push(button[0])
         }
         filteredButtons = [...new Set(filteredButtons)];
+        categoryButtons = [...new Set(categoryButtons)];
+        filteredButtonCategories[category] = categoryButtons;
+        //filteredButtonCategories["Identification.Make"] = ["BMW", "Toyota"];
+        //filteredButtonCategories["Identification.Year"] = ["2010", "2011"];
+
+        console.log(filteredButtonCategories)
 
         filterData();
     }
@@ -529,32 +551,38 @@
             update();
             //updateSliders(null) - need some sort of reset sliders here
         } else {
-
-            const filterButton = filteredButtons.map(
+            const filterButton = Object.keys(filteredButtonCategories).map(
                 function (e) {
-                    console.log(e)
-                    buttonVal = filtered[e]
-                    colName = buttonVal[1]
-                    cars = cars.filter(d => d[colName] == e);
+                    var values = filteredButtonCategories[e]
+                    //var values = ["Audi", "Acura", "BMW"]
+
+                    cars = cars.filter(function (d) {
+
+                        filterBool = false
+                        for (var i = 0; i < values.length; i++) {
+                            if (d[e] == values[i]) {
+                                filterBool = true
+                            }
+                        }
+                        return filterBool
+                    }
+                    );
                     update();
-                    updateSliders(null);
+                    //updateSliders(null);
                 }
             );
         }
         if (Object.keys(filteredSliders)) {
             const filterSlider = Object.keys(filteredSliders).map(
                 function (e) {
-                    console.log(e)
                     bounds = filteredSliders[e]
-                    console.log(bounds)
                     cars = cars.filter(d => d[e] >= bounds[0] && d[e] <= bounds[1]);
                     update();
                     updateSliders(e);
                 }
             )
         }
-        console.log(filteredButtons)
-        console.log(filteredSliders)
+
         updateFilterInfo();
     }
     ///////////////////////////////
@@ -838,6 +866,7 @@
 
         filteredButtons = []
         filteredSliders = {}
+        filteredButtonCategories = {}
         updateFilterInfo();
 
         $("select").val('default');
