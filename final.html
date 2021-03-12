@@ -114,7 +114,14 @@
         display: flex; 
         flex-shrink: 2;
     }
-    
+    .filterInfo{
+        display: flex;
+        flex-direction: row;
+        padding-left: 10px;
+    }
+    p {
+        margin-left: 10px;
+    }
 </style>
 
 <head>
@@ -288,9 +295,7 @@
         d3.select(".filterInfo").selectAll("*").remove();
         f.append("div")
             .html("<b>" + "Currently Filtering on:" + "</b>");
-        var noDuplicates = [...new Set(filteredButtons)];
-        console.log(noDuplicates)
-        const filterOutput = noDuplicates.map(function (d) {
+        const filterOutput = filteredButtons.map(function (d) {
             var buttonInfo = filtered[d]
             var buttonCat = buttonInfo[1]
             var buttonCategory = buttonCat.split('.')[1];
@@ -328,8 +333,8 @@
                 .attr("data-live-search", "true")
                 .attr("title", title)
                 .attr("id", String.fromCharCode(i + 65))
-                // .attr("data-prefix", shand + ": ")
-                // .attr("data-placeholder", shand + ": ")
+            // .attr("data-prefix", shand + ": ")
+            // .attr("data-placeholder", shand + ": ")
 
             var id = "#" + String.fromCharCode(i + 65);
             var res = { "name": d, "id": id };
@@ -353,18 +358,18 @@
                 })
 
             buttons.attr("class", "curr");
-            
+
             buttons.exit().attr("class", "old");
 
             buttons.enter()
                 .append("option")
                 .attr("class", "new")
                 .merge(buttons)
-                    .attr("value", p => p.name)
-                    //.html(p => p.name)
-                    .html(p => p.name);
+                .attr("value", p => p.name)
+                //.html(p => p.name)
+                .html(p => p.name);
 
-            
+
 
             $(id).selectpicker('refresh');
             $(id).selectpicker('render');
@@ -513,8 +518,9 @@
             filteredButtons.splice(index, 1);
             console.log("should splice")
         } else {
-            filteredButtons.push(button)
+            filteredButtons.push(button[0])
         }
+        filteredButtons = [...new Set(filteredButtons)];
 
         filterData();
     }
@@ -831,6 +837,10 @@
         cars = [...masterCars]
         update();
         updateSliders(null);
+
+        filteredButtons = []
+        filteredSliders = {}
+        updateFilterInfo();
 
         $("select").val('default');
         $("select").selectpicker("refresh");
