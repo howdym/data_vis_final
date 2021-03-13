@@ -523,12 +523,14 @@
     function buttonClick(button) {
         if (buttonCategories.includes(button)) {
             var categoryButtons = []
-            var category = button
+            //var category = button
+            delete filteredButtonCategories[button]
         } else {
             var categoryButtons = button
             var recent = button[button.length - 1]
             var buttonInformation = filtered[recent]
             var category = buttonInformation[1]
+            filteredButtonCategories[category] = categoryButtons;
         }
 
 
@@ -542,17 +544,16 @@
         // }
         // filteredButtons = [...new Set(filteredButtons)];
         //categoryButtons = [...new Set(categoryButtons)];
-        filteredButtonCategories[category] = categoryButtons;
+
         //filteredButtonCategories["Identification.Make"] = ["BMW", "Toyota"];
         //filteredButtonCategories["Identification.Year"] = ["2010", "2011"];
-
 
         filterData();
     }
 
     function filterData() {
         cars = masterCars
-        console.log("here")
+
         var buttonCount = 0
         buttonCount = Object.keys(filteredButtonCategories).map(
             function (d) {
@@ -561,12 +562,13 @@
             });
 
         if (buttonCount == 0) {
-            cars = [...masterCars]
+            update();
         } else {
             const filterButton = Object.keys(filteredButtonCategories).map(
                 function (e) {
                     var values = filteredButtonCategories[e]
                     if (values != []) {
+                        console.log(e)
                         cars = cars.filter(function (d) {
 
                             filterBool = false
@@ -580,12 +582,13 @@
                         );
                     }
                     update();
+                    console.log(cars.length)
                     //updateSliders(null);
                 }
             );
         }
 
-        if (Object.keys(filteredSliders)) {
+        if (Object.keys(filteredSliders).length) {
             const filterSlider = Object.keys(filteredSliders).map(
                 function (e) {
                     bounds = filteredSliders[e]
