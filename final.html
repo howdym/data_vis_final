@@ -196,7 +196,7 @@
 
     //dictionary of keys and filtering information
     var filtered = {}
-    var filteredButtons = []
+    //var filteredButtons = []
     var filteredSliders = {}
     var filteredButtonCategories = {}
     var buttonCategories = []
@@ -634,7 +634,7 @@
         if (attr_info[key]["type"] == "color") {
             scale = d3.scaleOrdinal()
                 .domain(["Gasoline", "E85", "Compressed natural gas", "Diesel fuel"])
-                .range(["#1f78b4", "#a6cee3", "#b2df8a", "#984ea3"]);
+                .range(["#459B89", "#BC3B70", "#9452DC", "#DC8952"]);
         } else {
             scale = d3.scaleLinear()
                 .domain([range[0], range[1]])
@@ -877,7 +877,7 @@
         update();
         updateSliders(null);
 
-        filteredButtons = []
+        //filteredButtons = []
         filteredSliders = {}
         filteredButtonCategories = {}
         updateFilterInfo();
