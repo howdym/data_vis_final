@@ -199,6 +199,7 @@
     var filteredButtons = []
     var filteredSliders = {}
     var filteredButtonCategories = {}
+    var buttonCategories = []
 
     // Initialize tooltip
     var tooltip = d3.select("body").append("div")
@@ -294,13 +295,18 @@
         d3.select(".filterInfo").selectAll("*").remove();
         f.append("div")
             .html("<b>" + "Currently Filtering on:" + "</b>");
-        const filterOutput = filteredButtons.map(function (d) {
-            var buttonInfo = filtered[d]
-            var buttonCat = buttonInfo[1]
-            var buttonCategory = buttonCat.split('.')[1];
-            f.append("div")
-                .html("<p>" + "<u>" + buttonCategory + "</u>" + ": " + d + "</p>");
+
+        const filterButton = Object.keys(filteredButtonCategories).map(function (b) {
+            var buttonNames = filteredButtonCategories[b]
+            var buttonCategory = b.split('.')[1];
+            const buttonPrint = buttonNames.map(function (d) {
+                f.append("div")
+                    .html("<p>" + "<u>" + buttonCategory + "</u>" + ": " + d + "</p>");
+            })
+
+
         });
+
         const filterSlider = Object.keys(filteredSliders).map(function (d) {
             var bounds = filteredSliders[d]
             if (d != "Volume") {
@@ -317,6 +323,7 @@
     function makeButtons() {
         var buttonList = query_attr.buttons;
         bWraps = d3.selectAll(".bar")
+        buttonCategories = query_attr["buttons"]
         query_attr.buttons = buttonList.map(function (d, i) {
             var title = d.slice(d.lastIndexOf(".") + 1)
             // var shand = title.split(" ");
@@ -343,6 +350,8 @@
     }
 
     function updateButtons() {
+        console.log(query_attr["buttons"])
+
         query_attr.buttons.map(function (d, i) {
             var id = d.id;
             var d = d.name;
@@ -375,7 +384,7 @@
 
             // For testing 
             // $(id).change(filterToE85);
-            $(id).change(_ => buttonClick($(id).val()));
+            $(id).change(_ => buttonClick(($(id).val() == null) ? d : $(id).val()));
         })
 
         // $("select").each(function () {
@@ -391,6 +400,7 @@
         //         }
         //     });
         // });
+
     }
 
     function makeSliders() {
@@ -490,88 +500,91 @@
             } else {
 
                 attr_info[d].range = filteredSliders[d];
-                console.log(attr_info[d].range);
+                //console.log(attr_info[d].range);
             }
         });
     }
     function sliderChange(d, start, end) {
-        console.log(d)
+        //console.log(d)
         sliderVals = filtered[d]
         var range = end - start
-        console.log(range)
-        console.log(sliderVals)
+        //console.log(range)
+        //console.log(sliderVals)
         if (range == sliderVals[1]) {
             delete filteredSliders.d
-            console.log("delete");
+            //console.log("delete");
         } else {
             filteredSliders[d] = [start, end]
         }
-        console.log(filteredSliders);
+        //console.log(filteredSliders);
         filterData();
     }
 
     function buttonClick(button) {
-        console.log(filtered)
-        var buttonInformation = filtered[button]
-        var category = buttonInformation[1]
-        if (category in filteredButtonCategories) {
-            categoryButtons = filteredButtonCategories[category]
-        }
-        else {
-            categoryButtons = []
-        }
-
-
-
-
-        if (filteredButtons.includes(button)) { //was pressed -> now not pressed
-            var index = filteredButtons.indexOf(button);
-            filteredButtons.splice(index, 1);
-            console.log("should splice")
-            var index = categoryButtons.indexOf(button);
-            categoryButtons.splice(index, 1);
+        if (buttonCategories.includes(button)) {
+            var categoryButtons = []
+            var category = button
         } else {
-            filteredButtons.push(button[0])
-            categoryButtons.push(button[0])
+            var categoryButtons = button
+            var recent = button[button.length - 1]
+            var buttonInformation = filtered[recent]
+            var category = buttonInformation[1]
         }
-        filteredButtons = [...new Set(filteredButtons)];
-        categoryButtons = [...new Set(categoryButtons)];
+
+
+
+        // if (filteredButtons.includes(recent)) { //was pressed -> now not pressed
+        //     var index = filteredButtons.indexOf(recent);
+        //     filteredButtons.splice(index, 1);
+
+        // } else {
+        //     filteredButtons.push(recent)
+        // }
+        // filteredButtons = [...new Set(filteredButtons)];
+        //categoryButtons = [...new Set(categoryButtons)];
         filteredButtonCategories[category] = categoryButtons;
         //filteredButtonCategories["Identification.Make"] = ["BMW", "Toyota"];
         //filteredButtonCategories["Identification.Year"] = ["2010", "2011"];
 
-        console.log(filteredButtonCategories)
 
         filterData();
     }
 
     function filterData() {
         cars = masterCars
-        if (filteredButtons.length == 0) {
-            update();
-            //updateSliders(null) - need some sort of reset sliders here
+        console.log("here")
+        var buttonCount = 0
+        buttonCount = Object.keys(filteredButtonCategories).map(
+            function (d) {
+                var values = filteredButtonCategories[d]
+                return buttonCount + values.length
+            });
+
+        if (buttonCount == 0) {
+            cars = [...masterCars]
         } else {
             const filterButton = Object.keys(filteredButtonCategories).map(
                 function (e) {
                     var values = filteredButtonCategories[e]
-                    //var values = ["Audi", "Acura", "BMW"]
+                    if (values != []) {
+                        cars = cars.filter(function (d) {
 
-                    cars = cars.filter(function (d) {
-
-                        filterBool = false
-                        for (var i = 0; i < values.length; i++) {
-                            if (d[e] == values[i]) {
-                                filterBool = true
+                            filterBool = false
+                            for (var i = 0; i < values.length; i++) {
+                                if (d[e] == values[i]) {
+                                    filterBool = true
+                                }
                             }
+                            return filterBool
                         }
-                        return filterBool
+                        );
                     }
-                    );
                     update();
                     //updateSliders(null);
                 }
             );
         }
+
         if (Object.keys(filteredSliders)) {
             const filterSlider = Object.keys(filteredSliders).map(
                 function (e) {
@@ -621,7 +634,7 @@
         if (attr_info[key]["type"] == "color") {
             scale = d3.scaleOrdinal()
                 .domain(["Gasoline", "E85", "Compressed natural gas", "Diesel fuel"])
-                .range(["#e66101", "#fdb863", "#b2abd2", "#5e3c99"]);
+                .range(["#1f78b4", "#a6cee3", "#b2df8a", "#984ea3"]);
         } else {
             scale = d3.scaleLinear()
                 .domain([range[0], range[1]])
@@ -699,7 +712,7 @@
     function remakeOneGraph(i) {
         var graphInfo = graphs[i]
 
-        var enterList = (i == 0 || i == 2) ? [["stroke", "black"], ["fill-opacity", 0]] : [["opacity", 0.8], ["opacity", 0.8]];
+        var enterList = (i == 0 || i == 2) ? [["stroke", "#457E9B"], ["fill-opacity", 0]] : [["opacity", 0.8], ["opacity", 0.8]];
         var mergeList = [graphInfo.x, graphInfo.y, graphInfo.z, graphInfo.z];
         var attrList = ["cx", "cy", "r", "fill"]
         mergeList = mergeList.map((val, i) => { return { "attr": attrList[i], "key": val } });
@@ -774,7 +787,7 @@
             .domain([0, 3])
             .range([attr_info[graphs[0].z]["range"][0], attr_info[graphs[0].z]["range"][1]]);
         keys = keys.map(k => quartiles(k));
-        console.log(keys);
+        //console.log(keys);
 
         legend1 = d3.select("#Legend1");
         var circles1 = legend1.selectAll("circle")
@@ -782,7 +795,7 @@
 
         circles1.enter()
             .append("circle")
-            .attr("stroke", "black")
+            .attr("stroke", "#457E9B")
             .attr("fill", "none")
             .attr("cx", attr_info[graphs[0].z]["scale"](quartiles(3)) + 5)
             .attr("cy", function (d, i) { return 100 + i * 25 }) // 100 is where the first dot appears. 25 is the distance between dots
@@ -887,7 +900,7 @@
         } else {
             queries.push(attrAdj);
         }
-        console.log(queries);
+        //console.log(queries);
     }
 
     /////////////
