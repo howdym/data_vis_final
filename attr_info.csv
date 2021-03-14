@@ -1,0 +1,9 @@
+name,range,scale,axis,type,axis_title,width
+Dimensions.Length,0,0,0,x,Length,1
+Dimensions.Height,0,0,0,y,Height,0
+Dimensions.Width,0,0,0,size,0,0
+Fuel Information.Highway mpg,0,0,0,y,Highway MPG,0
+Engine Information.Engine Statistics.Horsepower,0,0,0,x,Horsepower,0.486
+Fuel Information.City mpg,0,0,0,y,City MPG,0
+Volume,0,0,0,x,Volume,0.514
+Fuel Information.Fuel Type,0,0,0,color,0,0

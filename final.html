@@ -2,14 +2,25 @@
 <html>
 <meta charset="utf-8">
 <style>
-    .container { 
+    /* For formatting */
+    .rows { 
         display: flex;
+        flex-wrap: wrap;
+    }
+
+    /* For formatting */
+    .cols { 
+        display: flex;
+        width: 350px;
+        height: 130vh; 
+        flex-direction: column;
+        justify-content: space-evenly;
     }
 
     .tooltip { 
         position: absolute; 
         width: 275px; 
-        height: 185px; 
+        height: 200px; 
         pointer-events: none;
         background-color: bisque;
     }
@@ -17,454 +28,963 @@
     .exit { 
         float: right;
     }
+
+    /* slider size */
+    .noUi-target { 
+        height: 150px;
+        margin-bottom: 20px;
+        margin-right: 5px;
+    }
+
+    /* slider handle */
+    .noUi-horizontal .noUi-handle { 
+        width: 10px !important;
+        height: 25px !important;
+        content: none !important; 
+        right: -8px !important;
+    }
+
+    .noUi-handle:after, .noUi-handle:before { 
+        content: none !important; 
+    }
+
+    /* For Legend */
+    .legend { 
+        height: 200px; 
+        width: 90px;
+        margin-top: 35px;
+    }
+
+    /* For formatting */
+    .sliderBox { 
+        display: flex;
+        flex-wrap: wrap;
+        width: 350px;
+        float: right;
+    }
+
+    /* For formatting */
+    .sliders { 
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        height: 240px; 
+        width: 80px;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        word-wrap: break-word;
+        margin-right: 5px;
+    }
+
+    /* For formatting text */
+    b { 
+        text-align: center;
+        align-self: center;
+    }
+
+    /* For formatting */
+    .buttons { 
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-start;
+        width: 350px; 
+        flex-wrap: wrap;
+    }
+
+    #dropdown { 
+        float: none;
+        display: inline-block;
+        margin-left: 0;
+    }
+
+    .sliderSet { 
+        width: 400px; 
+    }
+
+    #graphs { 
+        display: flex; 
+        flex-shrink: 2;
+    }
+
+    .curr { 
+        font-weight: bold !important;
+    }
+
+    .bar {
+        display: flex; 
+        flex-shrink: 2;
+    }
+
+    .filterInfo{
+        display: flex;
+        flex-direction: row;
+        padding-left: 10px;
+    }
+    p {
+        margin-left: 10px;
+    }
+    .selected {
+        color:red;
+        margin: 10px;
+    }
 </style>
 
-<head> 
+<head>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.13.1/css/bootstrap-select.css" />
     <link href="nouislider.min.css" rel="stylesheet">
 </head>
 
 <body>
     <script src="nouislider.min.js"></script>
-    <form>
-        <input type="Button" value="Filter Gasoline" onclick="filterToGasoline()"/>
-    </form>
-    <form>
-        <input type="Button" value="Filter E85" onclick="filterToE85()"/>
-    </form>
-    <div id="slider"></div>
-    <div class="container">
-        <svg id="Dimensions"></svg>
-        <svg id="Legend1" height=300 width=450></svg>
+
+    <!-- Library to help slider stuff -->
+    <script type="text/javascript" src="https://unpkg.com/wnumb@1.2.0/wNumb.js"></script>
+
+    <div class="bar">
+        <button type="button" class="btn btn-danger" onclick="reset()">Reset</button>
     </div>
-    <div class="container">
-        <svg id="HighwayMPG-HP"></svg>
-        <svg id="Legend2" height=300 width=450></svg>
+    <div class="filterInfo">
+        <b>Currently Filtering on:</b>
     </div>
-    <svg id="CityMPG-Volume"></svg>
+
+
+
+    <div class="rows">
+        <div id="graphs">
+            <div class="rows">
+                <svg id="Dimensions"></svg>
+                <svg id="Legend1" class="legend"></svg>
+            </div>
+        </div>
+        <div id="graphs">
+            <svg id="CityMPG-Volume"></svg>
+            <div class="rows">
+                <svg id="HighwayMPG-HP"></svg>
+                <svg id="Legend2" class="legend"></svg>
+            </div>
+        </div>
+        <div class="sliderSet"></div>
+    </div>
+
+    <div class="dropdown" id="dropdown">
+        <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown"
+            aria-haspopup="true" aria-expanded="false">
+            Sliders
+        </button>
+        <div class="dropdown-menu dropdown-menu-right" id="dropdown-menu" aria-labelledby="dropdownMenuButton">
+        </div>
+    </div>
+    <div class="selected">
+        <b>Selected Cars will be shown in red</b>
+    </div>
+
+    <script src="http://d3js.org/d3.v6.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.13.1/js/bootstrap-select.min.js"></script>
 </body>
 
-<script src="http://d3js.org/d3.v6.min.js"></script>
-
 <script>
-  let width = 960, height = 500;
-  var margin = {top: 30, right: 20, bottom: 50, left: 20};
+    var svg_width = screen.width - 110;
 
-  let svg1 = d3.select("#Dimensions")
-      .attr("width", width)
-      .attr("height", height)
-      .append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+    //console.log(screen.width, screen.height);
+    var margin = { top: 50, right: 20, bottom: 50, left: 50 };
+    var graphs = [d3.select("#Dimensions"), d3.select("#HighwayMPG-HP"), d3.select("#CityMPG-Volume")]
+    var height = parseInt((screen.height - 200) / 2);
 
-  let svg2 = d3.select("#HighwayMPG-HP") 
-      .attr("width", width) 
-      .attr("height", height)
-      .append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+    //   Columns that we want
+    var attr_key = []
 
-  let svg3 = d3.select("#CityMPG-Volume") 
-      .attr("width", width) 
-      .attr("height", height)
-      .append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+    // Info about our attributes that would be useful for making graph and sliders. 
+    var attr_info = {}
 
-  var tooltip = d3.select("body").append("div") 
-      .attr("class", "tooltip") 
-      .style("opacity", 0);
+    // Any column that should be a button or slider.
+    var query_attr;
 
-  width = width - margin.left - margin.right;
-  height = height - margin.top - margin.bottom;
+    // List of queries to filter on. 
+    var queries = []
 
-  let masterCars, cars;
-  ready();
+    //dictionary of keys and filtering information
+    var filtered = {}
+    //var filteredButtons = []
+    var filteredSliders = {}
+    var filteredButtonCategories = {}
+    var buttonCategories = []
 
-  var circleMin = 5, circleMax = 10;
-  var cityMPG = [], highwayMPG = [], HP = [], Volume = [], carLength = [], carHeight = [], carWidth = [], Fuel = [], ID = [];
-  var xScale1, yScale1, xScale2, yScale2, xScale3, yScale3, fuelColor, widthSizes;
+    // Initialize tooltip
+    var tooltip = d3.select("body").append("div")
+        .attr("class", "tooltip")
+        .style("opacity", 0);
 
-  async function ready() {
-    masterCars = await d3.csv("cars.csv");
-    for (var i = 0; i < masterCars.length; i++) 
-        masterCars[i]["ID"] = i;
-    cars = masterCars.slice();
+    // Mastercars stay the same. Cars get adjusted. 
+    let masterCars, cars;
+    ready();
 
-    var tooltip = d3.select("body").append("div") 
-      .attr("class", "tooltip") 
-      .style("opacity", 0);
+    var circleMin = 5, circleMax = 10;
 
-    init();
+    //////////////////
+    // Data loading //
+    //////////////////
 
-    var slider = document.getElementById('slider');
+    async function ready() {
+        masterCars = await d3.csv("cars.csv");
+        cars = masterCars;
 
-    noUiSlider.create(slider, {
-        start: [20, 80],
-        connect: true,
-        range: {
-            'min': d3.min(cityMPG),
-            'max': d3.max(cityMPG)
+        attr_data = await d3.csv("attr_info.csv");
+        graph_info = await d3.csv("graph_info.csv");
+        query_attr = await d3.json("query_attr.json")
+
+        attr_data.map(d => { d.width = svg_width * +d.width; attr_info[d.name] = d; attr_key.push(d.name) });
+
+        // When above line is done, attr_key should have all the column names to be used to make the graph 
+        // attr_info will be the name of the row as the key and the row as a dictionary as the value. 
+
+        // Initialize margin start for graphs
+        for (var i = 0; i < graphs.length; i++) {
+            graphs[i] = graphs[i]
+                .attr("width", +attr_info[graph_info[i].x].width)
+                .attr("height", height)
+                .append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+            // True width and height for our graph
+            attr_info[graph_info[i].x].width = +attr_info[graph_info[i].x].width - margin.left - margin.right;
         }
-    });
 
-    slider.noUiSlider.on("update", d => filterToCarMPG(+slider.noUiSlider.get()[0], 
-                                                       +slider.noUiSlider.get()[1]))
-  }
+        height = height - margin.top - margin.bottom;
 
-  function collect() {
-    cityMPG = [], highwayMPG = [], HP = [], Volume = [], carLength = [], carHeight = [], carWidth = [], Fuel = [], ID = [];
-    for (var i = 0; i < cars.length; i++) { 
-        var data = cars[i]; 
-        cityMPG.push(+data["Fuel Information.City mpg"]);
-        highwayMPG.push(+data["Fuel Information.Highway mpg"]);
-        HP.push(+data["Engine Information.Engine Statistics.Horsepower"]);
-        var w = +data["Dimensions.Width"], l = +data["Dimensions.Length"], h = +data["Dimensions.Height"];
-        Volume.push(w * l * h);
-        carWidth.push(w); 
-        carLength.push(l);
-        carHeight.push(h);
-        Fuel.push(data["Fuel Information.Fuel Type"])
-        ID.push(data["ID"])
+        graphs = graph_info.map((d, i) => { d.graph = graphs[i]; return d; })
+
+        // This what one elemnt would look like in the graphs array when the above line is done running 
+        // graphs = [{"graph": d3.select("#Dimensions"), "title": "Length vs Height vs Width of Car", "x": "Dimensions.Length", "y": "Dimensions.Height", "z": "Dimensions.Width"}]
+
+        var tooltip = d3.select("body").append("div")
+            .attr("class", "tooltip")
+            .style("opacity", 0);
+
+        init();
     }
-  }
 
-  function makeRanges() { 
-    xScale1 = d3.scaleLinear()
-        .domain([d3.min(carLength), d3.max(carLength)])	
-        .range([20, width - 20]);	
-    
-    yScale1 = d3.scaleLinear()
-        .domain([d3.min(carHeight), d3.max(carHeight)])	
-        .range([height - 20, 20]);	
+    ////////////////////
+    // Main functions //
+    ////////////////////
+    function update() {
+        collect();
+        makeRanges();
+        updateAxis();
+        remakeGraph();
+        updateLegend();
+        updateButtons();
+        // do update sliders in the filter funciton
+    }
 
-    carScale = d3.scaleLinear()
-        .domain([d3.min(carWidth), d3.max(carWidth)])	
-        .range([circleMin, circleMax]);	
-    
-    xScale2 = d3.scaleLinear()
-        .domain([d3.min(HP), d3.max(HP)])	
-        .range([5, width - 5]);	
-    
-    yScale2 = d3.scaleLinear()
-        .domain([d3.min(highwayMPG), d3.max(highwayMPG)])	
-        .range([height - 5, 5]);	
+    function init() {
+        collect();
+        // Make range (min, max), store it in attr_info for corresponding column 
+        makeRanges();
 
-    // Colors taken from color brewer: colorblind, print, and photocopy friendly. 
-    fuelColor = d3.scaleOrdinal()
-        .domain(["Gasoline", "E85", "Compressed natural gas", "Diesel fuel"])	
-        .range(["#e66101", "#fdb863", "#b2abd2", "#5e3c99"]);	
+        // Make axis, '' ''
+        initAxis();
 
-    xScale3 = d3.scaleLinear()
-        .domain([d3.min(Volume), d3.max(Volume)])	
-        .range([5, width - 5]);	
-    
-    yScale3 = d3.scaleLinear()
-        .domain([d3.min(cityMPG), d3.max(cityMPG)])	
-        .range([height - 5, 5]);	 
-  }
+        // Make the graph. Called remake because used for both making and remaking 
+        remakeGraph();
 
-  function remakeGraph() { 
-    svg1.selectAll("*").remove();
-    svg2.selectAll("*").remove();
-    svg3.selectAll("*").remove();
-    circles1 = svg1.selectAll("circle")	
-        .data(carLength.map(function(v, i) {return [v, carHeight[i], carWidth[i], ID[i]];}))
-        .enter().append("circle")	
-            .attr("stroke", "black")
-            .attr("fill", "white") 
-            .attr("fill-opacity", 0)
-        .on("mouseover", function(d) { 
-          tooltip.transition() 
-            .duration(200) 
-            .style("opacity", .9); 
-          updateTooltip(d.path[0].__data__[3], d.pageX, d.pageY)
-        })
-        .on("mouseout", function(d) { 
-          tooltip.transition() 
-            .duration(200) 
-            .style("opacity", 0); 
-        });
-    circles1
-        .attr("cx",	function(d)	{	return	xScale1(d[0]);	})
-        .attr("cy",	function(d)	{	return	yScale1(d[1]);	})
-        .attr("r",	function(d) { return carScale(d[2]); })
-    circles1.exit()
-        .remove()
+        // Make the title for the legend. 
+        makeLegend();
 
-    var	xAxis1 = d3.axisBottom()	
-            .scale(xScale1);
-    
-    var	yAxis1 = d3.axisLeft()	
-        .scale(yScale1);
+        // You need to update the legend after making the legend. 
+        updateLegend();
+        makeButtons();
+        makeSliders();
+    }
 
-    svg1.append("g")	
-        .attr("transform", "translate(0, " + height + ")")
-        .call(xAxis1)
-        .call(g => g.append("text")
-            .attr("x", width)
-            .attr("y", margin.bottom - 5)
-            .attr("fill", "currentColor")
-            .attr("text-anchor", "end")
-            .text("Length →"));
-        
-    svg1.append("g")	
-        .call(yAxis1)
-        .call(g => g.append("text")
-            .attr("x", -margin.left)
-            .attr("y", 10)
-            .attr("fill", "currentColor")
-            .attr("text-anchor", "start")
-            .text("↑ Height"));
+    ////////////////////////
+    // Input Construction //
+    ////////////////////////
 
-    svg1.append("text")
-        .attr("x", (width / 2))             
-        .attr("y", 0 - (margin.top / 2))
-        .attr("text-anchor", "middle")  
-        .style("font-size", "16px")  
-        .text("Length vs Height vs Width of Car");
+    function updateFilterInfo() {
+        f = d3.selectAll(".filterInfo")
+        d3.select(".filterInfo").selectAll("*").remove();
+        f.append("div")
+            .html("<b>" + "Currently Filtering on:" + "</b>");
 
-    circles2 = svg2.selectAll("circle")	
-        .data(HP.map(function(v, i) {return [v, highwayMPG[i], Fuel[i], ID[i]];}))
-        .enter().append("circle")	
-            .attr("r",	5) 
-            .attr("opacity", 0.8)
-        .on("mouseover", function(d) { 
-          tooltip.transition() 
-            .duration(200) 
-            .style("opacity", .9); 
-          updateTooltip(d.path[0].__data__[3], d.pageX, d.pageY)
-        })
-        .on("mouseout", function(d) { 
-          tooltip.transition() 
-            .duration(200) 
-            .style("opacity", 0); 
-        });	
-    circles2
-        .attr("cx",	function(d)	{	return	xScale2(d[0]);	})
-        .attr("cy",	function(d)	{	return	yScale2(d[1]);	})
-        .attr("fill", function(d) { return fuelColor(d[2]); });
-    circles2.exit()
-        .remove();
-            
+        const filterButton = Object.keys(filteredButtonCategories).map(function (b) {
+            var buttonNames = filteredButtonCategories[b]
+            var buttonCategory = b.split('.')[1];
+            const buttonPrint = buttonNames.map(function (d) {
+                f.append("div")
+                    .html("<p>" + "<u>" + buttonCategory + "</u>" + ": " + d + "</p>");
+            })
 
-    var	xAxis2 = d3.axisBottom()	
-            .scale(xScale2);
-    
-    var	yAxis2 = d3.axisLeft()	
-        .scale(yScale2);
 
-    svg2.append("g")	
-        .attr("transform", "translate(0, " + height + ")")
-        .call(xAxis2)
-        .call(g => g.append("text")
-            .attr("x", width)
-            .attr("y", margin.bottom - 5)
-            .attr("fill", "currentColor")
-            .attr("text-anchor", "end")
-            .text("Horsepower →"));
-        
-    svg2.append("g")	
-        .call(yAxis2)
-        .call(g => g.append("text")
-            .attr("x", -margin.left)
-            .attr("y", -5)
-            .attr("fill", "currentColor")
-            .attr("text-anchor", "start")
-            .text("↑ Highway MPG"));
-
-    svg2.append("text")
-        .attr("x", (width / 2))             
-        .attr("y", 0 - (margin.top / 2))
-        .attr("text-anchor", "middle")  
-        .style("font-size", "16px")  
-        .text("Horsepower vs Highway MPG vs Fuel Type");
-
-    circles3 = svg3.selectAll("circle")	
-        .data(Volume.map(function(v, i) {return [v, cityMPG[i], ID[i]];}))
-        .enter().append("circle")	
-            .attr("r",	5) 
-            .attr("stroke", "black")
-            .attr("fill", "white")
-            .attr("fill-opacity", 0)
-        .on("mouseover", function(d) { 
-          tooltip.transition() 
-            .duration(200) 
-            .style("opacity", .9); 
-          updateTooltip(d.path[0].__data__[2], d.pageX, d.pageY)
-        })
-        .on("mouseout", function(d) { 
-          tooltip.transition() 
-            .duration(200) 
-            .style("opacity", 0); 
         });
 
-    circles3
-        .attr("cx",	function(d)	{	return	xScale3(d[0]);	})
-        .attr("cy",	function(d)	{	return	yScale3(d[1]);	}); 
-    circles3.exit()
-        .remove();
-            	
-    var	xAxis3 = d3.axisBottom()	
-            .scale(xScale3);
-    
-    var	yAxis3 = d3.axisLeft()	
-        .scale(yScale3);
+        const filterSlider = Object.keys(filteredSliders).map(function (d) {
+            var bounds = filteredSliders[d]
+            if (d != "Volume") {
+                var sliderName = d.split('.')[1];
+            } else {
+                sliderName = "Volume"
+            }
+            f.append("div")
+                .html("<p>" + "<u>" + sliderName + "</u>" + ": [" + bounds + "] " + "</p>");
+        }
+        );
+    }
 
-    svg3.append("g")	
-        .attr("transform", "translate(0, " + height + ")")
-        .call(xAxis3)
-        .call(g => g.append("text")
-            .attr("x", width)
-            .attr("y", margin.bottom - 5)
-            .attr("fill", "currentColor")
-            .attr("text-anchor", "end")
-            .text("Volume →"));
-        
-    svg3.append("g")	
-        .call(yAxis3)
-        .call(g => g.append("text")
-            .attr("x", -margin.left)
-            .attr("y", -5)
-            .attr("fill", "currentColor")
-            .attr("text-anchor", "start")
-            .text("↑ City MPG"));
+    function makeButtons() {
+        var buttonList = query_attr.buttons;
+        bWraps = d3.selectAll(".bar")
+        buttonCategories = query_attr["buttons"]
+        query_attr.buttons = buttonList.map(function (d, i) {
+            var title = d.slice(d.lastIndexOf(".") + 1)
+            // var shand = title.split(" ");
+            // if (shand.length >= 2) {
+            //     shand = shand.splice(-2);
+            //     shand = shand[0] + " " + shand[1]
+            // } else {
+            //     shand = shand[0];
+            // }
+            bWraps.append("select")
+                .attr("class", "selectpicker")
+                .attr("multiple", true)
+                .attr("data-live-search", "true")
+                .attr("title", title)
+                .attr("id", String.fromCharCode(i + 65))
+            // .attr("data-prefix", shand + ": ")
+            // .attr("data-placeholder", shand + ": ")
 
-    svg3.append("text")
-        .attr("x", (width / 2))             
-        .attr("y", 0 - (margin.top / 2))
-        .attr("text-anchor", "middle")  
-        .style("font-size", "16px")  
-        .text("Volume of Car vs City MPG");
-  }
+            var id = "#" + String.fromCharCode(i + 65);
+            var res = { "name": d, "id": id };
+            return res;
+        })
+        updateButtons();
+    }
 
-  function makeLegend() { 
-    legend1 = d3.select("#Legend1"); 
+    function updateButtons() {
+        //console.log(query_attr["buttons"])
 
-    legend1.append("text")
-        .attr("x", 0)
-        .attr("y", function(d, i){ return 75})
-        .text("Width")
-        .attr("text-anchor", "left")
-        .style("font-size", "20px") 
-        .style("alignment-baseline", "middle")
+        query_attr.buttons.map(function (d, i) {
+            var id = d.id;
+            var d = d.name;
+            var options = [... new Set(cars.map(g => g[d]))];
 
-    legend2 = d3.select("#Legend2"); 
-    legend2.append("text")
-        .attr("x", 0)
-        .attr("y", function(d, i){ return 75})
-        .text("Fuel Type")
-        .attr("text-anchor", "left")
-        .style("font-size", "20px") 
-        .style("alignment-baseline", "middle")
-  }
+            options = options.map(f => { return { "name": f, "val": f } });
+            var buttons = d3.select(id).selectAll("option")
+                .data(options, e => {
+                    //initalized array of [not filtered, button] as [false, "button"] for button, for slider [not filtered, slider, total_range, current_range] is [0,1,x,x] where x is total range
+                    filtered[e.name] = ["button", d]
+                    return e.name
+                })
 
-  function updateLegend() { 
-    legend1 = d3.select("#Legend1"); 
+            buttons.attr("class", "curr");
 
-    // Quick fix: will probably not get away with this
-    legend1.selectAll("*").remove(); 
-    makeLegend();
+            buttons.exit().attr("class", "old");
 
-    var keys = [0, 1, 2, 3];
-    var quartiles = d3.scaleLinear()
-        .domain([0, 3])	
-        .range([d3.min(carWidth), d3.max(carWidth)]);
-    keys = keys.map(k => quartiles(k));
-    console.log(keys);
+            buttons.enter()
+                .append("option")
+                .attr("class", "new")
+                .merge(buttons)
+                .attr("value", p => p.name)
+                //.html(p => p.name)
+                .html(p => p.name);
 
-    var circles1 = legend1.selectAll("circle")
-        .data(keys)
-        
-    circles1.enter()
-        .append("circle")
-            .attr("stroke", "black")
+
+
+            $(id).selectpicker('refresh');
+            $(id).selectpicker('render');
+
+            // For testing 
+            // $(id).change(filterToE85);
+            $(id).change(_ => buttonClick(($(id).val() == null) ? d : $(id).val()));
+        })
+
+        // $("select").each(function () {
+        //     $(this).selectpicker({
+        //         noneSelectedText: $(this).data('placeholder')
+        //     });
+        //     $(this).on('changed.bs.select', function (e, clickedIndex, isSelected, previousValue) {
+        //         var $title = $(this).parent().find('.filter-option-inner-inner');
+        //         if ($(this).parent().find('.bs-placeholder').length === 0) {
+        //             $title.text($(this).data('prefix') + $title.text());
+        //         } else {
+        //             $title.text($(this).data('placeholder'));
+        //         }
+        //     });
+        // });
+
+    }
+
+    function makeSliders() {
+        query_attr.sliders = query_attr.sliders//.reverse()
+        var sliderList = query_attr.sliders;
+        sWraps = d3.selectAll(".sliderSet").append("div").attr("class", "sliderBox")
+        query_attr.sliders = sliderList.map(function (d, i) {
+            d3.selectAll(".sliderSet").select(".sliderBox").append("div")
+                .attr("class", "sliders")
+                .attr("id", String.fromCharCode(i + 97))
+                .html("<b>" + d.slice(d.lastIndexOf(".") + 1) + "</b>");
+
+            var id = "#" + String.fromCharCode(i + 97);
+            var t = d3.select(id).append("div")
+                .attr("id", String.fromCharCode(i + 97) + String.fromCharCode(i + 97));
+
+            id = String.fromCharCode(i + 97) + String.fromCharCode(i + 97);
+
+            var entry = attr_info[d]
+            var vals;
+            if (entry != null) {
+                vals = entry["range"];
+            } else {
+                var nums = masterCars.map(g => +g[d]);
+                vals = [d3.min(nums), d3.max(nums)];
+            }
+            var range_filter = vals[1] - vals[0];
+            filtered[d] = ["slider", range_filter];
+
+            var tooltipSlider = document.getElementById(id);
+            noUiSlider.create(tooltipSlider, {
+                start: [vals[0], vals[1]],
+                orientation: "vertical",
+                tooltips: [wNumb({ decimals: 0 }), wNumb({ decimals: 0 })],
+                connect: true,
+                range: {
+                    'min': vals[0],
+                    'max': vals[1]
+                }
+            });
+
+            // For testing only 
+            // tooltipSlider.noUiSlider.on("end", d => filterToCarMPG(+tooltipSlider.noUiSlider.get()[0], 
+            //                                                        +tooltipSlider.noUiSlider.get()[1]));
+            tooltipSlider.noUiSlider.on("end", _ => {
+                sliderChange(d, +tooltipSlider.noUiSlider.get()[0],
+                    +tooltipSlider.noUiSlider.get()[1])
+            })
+            return { "name": d, "id": id };
+        });
+
+        var element = document.getElementById("dropdown-menu");
+        var curr = document.getElementsByClassName("sliderSet")[0];
+        element.appendChild(curr);
+
+        element = document.getElementById("dropdown");
+        var bar = document.getElementsByClassName("bar")[0];
+        bar.appendChild(element);
+
+        // This is an idea of what it would look like after init the buttons and sliders. 
+        // query_attr = ["buttons": [{"name": blah, "id": A}]], "sliders": [{"name": "dimension.height", id: "#a#a"}]
+    }
+
+    function updateSliders(skip) {
+        var sliderList = query_attr.sliders;
+        sliderList.map(function (d, i) {
+            var id = d.id;
+            var d = d.name;
+
+            if (d != skip) {
+                var entry = attr_info[d]
+                var vals;
+                if (entry != null) {
+                    vals = entry["range"];
+                } else {
+                    var nums = cars.map(g => +g[d]);
+                    vals = [d3.min(nums), d3.max(nums)];
+                }
+
+                var tooltipSlider = document.getElementById(id);
+                if (vals[0] == vals[1]) {
+                    tooltipSlider.setAttribute('disabled', true);
+                } else {
+                    tooltipSlider.setAttribute('disabled', true);
+                    tooltipSlider.removeAttribute('disabled');
+                }
+                if (vals[0] == vals[1]) {
+                    vals[1] = vals[0] + .1
+                }
+                // tooltipSlider.noUiSlider.updateOptions({
+                //     range: {
+                //         'min': vals[0],
+                //         'max': vals[1]
+                //     }
+                // });
+                tooltipSlider.noUiSlider.set(vals);
+            } else {
+
+                attr_info[d].range = filteredSliders[d];
+                //console.log(attr_info[d].range);
+            }
+        });
+    }
+    function sliderChange(d, start, end) {
+        //console.log(d)
+        sliderVals = filtered[d]
+        var range = end - start
+        //console.log(range)
+        //console.log(sliderVals)
+        if (range == sliderVals[1]) {
+            delete filteredSliders.d
+            //console.log("delete");
+        } else {
+            filteredSliders[d] = [start, end]
+        }
+        //console.log(filteredSliders);
+        filterData();
+    }
+
+    function buttonClick(button) {
+        if (buttonCategories.includes(button)) {
+            var categoryButtons = []
+            //var category = button
+            delete filteredButtonCategories[button]
+        } else {
+            var categoryButtons = button
+            var recent = button[button.length - 1]
+            var buttonInformation = filtered[recent]
+            var category = buttonInformation[1]
+            filteredButtonCategories[category] = categoryButtons;
+        }
+
+
+
+        // if (filteredButtons.includes(recent)) { //was pressed -> now not pressed
+        //     var index = filteredButtons.indexOf(recent);
+        //     filteredButtons.splice(index, 1);
+
+        // } else {
+        //     filteredButtons.push(recent)
+        // }
+        // filteredButtons = [...new Set(filteredButtons)];
+        //categoryButtons = [...new Set(categoryButtons)];
+
+        //filteredButtonCategories["Identification.Make"] = ["BMW", "Toyota"];
+        //filteredButtonCategories["Identification.Year"] = ["2010", "2011"];
+
+        filterData();
+    }
+
+    function filterData() {
+        cars = masterCars
+
+        var buttonCount = 0
+        buttonCount = Object.keys(filteredButtonCategories).map(
+            function (d) {
+                var values = filteredButtonCategories[d]
+                return buttonCount + values.length
+            });
+
+        if (buttonCount == 0) {
+            update();
+        } else {
+            const filterButton = Object.keys(filteredButtonCategories).map(
+                function (e) {
+                    var values = filteredButtonCategories[e]
+                    if (values != []) {
+                        cars = cars.filter(function (d) {
+
+                            filterBool = false
+                            for (var i = 0; i < values.length; i++) {
+                                if (d[e] == values[i]) {
+                                    filterBool = true
+                                }
+                            }
+                            return filterBool
+                        }
+                        );
+                    }
+                    update();
+                    //updateSliders(null);
+                }
+            );
+        }
+
+        if (Object.keys(filteredSliders).length) {
+            const filterSlider = Object.keys(filteredSliders).map(
+                function (e) {
+                    bounds = filteredSliders[e]
+                    cars = cars.filter(d => d[e] >= bounds[0] && d[e] <= bounds[1]);
+                    update();
+                    updateSliders(e);
+                }
+            )
+        }
+
+        updateFilterInfo();
+    }
+    ///////////////////////////////
+    // Data Collections/Creation //
+    ///////////////////////////////
+
+    function collect() {
+        // Removed nominal variable to do for loop on rest of variables. Then added nominal variable back in again and initalized range for nominal variable (all unique values).
+        val = attr_key.pop(attr_key.length - 1);
+        attr_key.map(function (k) {
+            temp = cars.map(d => +d[k]);
+            attr_info[k]["range"] = [d3.min(temp), d3.max(temp)];
+        })
+        attr_key.push(val);
+
+        attr_info[val]["range"] = [... new Set(cars.map(d => d[val]))]
+    }
+
+    function makeRange(key) {
+        var offset = 5;
+        if (key == "Dimensions.Length" || key == "Dimensions.Height") {
+            offset = 20;
+        }
+
+        var range = attr_info[key]["range"];
+        var scale, axis, rlist;
+
+        if (attr_info[key]["type"] == "x") {
+            rlist = [offset, +attr_info[key].width - offset];
+        } else if (attr_info[key]["type"] == "y") {
+            rlist = [height - offset, offset];
+        } else if (attr_info[key]["type"] == "size") {
+            rlist = [circleMin, circleMax];
+        }
+
+        if (attr_info[key]["type"] == "color") {
+            scale = d3.scaleOrdinal()
+                .domain(["Gasoline", "E85", "Compressed natural gas", "Diesel fuel"])
+                .range(["#7fc97f", "#beaed4", "#a6cee3", "#fdc086"]);
+        } else {
+            scale = d3.scaleLinear()
+                .domain([range[0], range[1]])
+                .range(rlist);
+        }
+
+        if (attr_info[key]["type"] == "x") {
+            axis = d3.axisBottom()
+                .scale(scale)
+        } else if (attr_info[key]["type"] == "y") {
+            axis = d3.axisLeft()
+                .scale(scale)
+        }
+
+        return [scale, axis];
+    }
+
+    function makeRanges() {
+        // Populate scale and axis columns for attr_info
+        attr_key.map(function (val) {
+            var o = makeRange(val)
+            attr_info[val]["scale"] = o[0];
+            attr_info[val]["axis"] = o[1];
+        })
+    }
+
+    //////////////////
+    // Graph Making //
+    //////////////////
+
+    // Axis 
+    function initAxis() {
+        for (var i = 0; i < 3; i++) {
+            graphs[i].graph.append("g")
+                .attr("transform", "translate(0, " + height + ")")
+                .attr("id", "xAxis")
+                .call(attr_info[graphs[i].x]["axis"])
+                .call(g => g.append("text")
+                    .attr("x", attr_info[graphs[i].x].width)
+                    .attr("y", margin.bottom - 10)
+                    .attr("fill", "currentColor")
+                    .attr("text-anchor", "end")
+                    .text(attr_info[graphs[i].x]["axis_title"] + " \u2192"));
+
+            graphs[i].graph.append("g")
+                .attr("id", "yAxis")
+                .call(attr_info[graphs[i].y]["axis"])
+                .call(g => g.append("text")
+                    .attr("x", -margin.left / 2)
+                    .attr("y", -5)
+                    .attr("fill", "currentColor")
+                    .attr("text-anchor", "start")
+                    .text("\u2191 " + attr_info[graphs[i].y]["axis_title"]));
+
+            graphs[i].graph.append("text")
+                .attr("x", (attr_info[graphs[i].x].width / 2))
+                .attr("y", 0 - (margin.top / 2))
+                .attr("text-anchor", "middle")
+                .style("font-size", "16px")
+                .text(graphs[i].title);
+        }
+    }
+
+    function updateAxis() {
+        for (var i = 0; i < 3; i++) {
+            graphs[i].graph.selectAll("#xAxis")
+                .call(attr_info[graphs[i].x]["axis"])
+
+            graphs[i].graph.selectAll("#yAxis")
+                .call(attr_info[graphs[i].y]["axis"])
+        }
+    }
+
+    // Graph
+    function remakeOneGraph(i) {
+        var graphInfo = graphs[i]
+        var enterList = (i == 0 || i == 2) ? [["fill-opacity", 1], ["fill-opacity", 1]] : [["opacity", 0.8], ["opacity", 0.8]];
+        var mergeList = [graphInfo.x, graphInfo.y, graphInfo.z, graphInfo.z, graphInfo.z, graphInfo.z];
+        var attrList = ["cx", "cy", "r", "fill", "stroke", "fill-opacity"]
+        mergeList = mergeList.map((val, i) => { return { "attr": attrList[i], "key": val } });
+        mergeList = mergeList.map(function (obj) {
+
+            var key = obj.key, res = { "attr": obj.attr, "val": d => { return attr_info[key]["scale"](+d[key]) } };
+
+            if (obj.attr == "r" && (attr_info[key] == null || attr_info[key].type != "size")) {
+                res.val = "5";
+            }
+            // } else if (obj.attr == "fill" && (attr_info[key] == null || attr_info[key].type != "color")) {
+            //     res.val = "white"
+
+            // } 
+            else if (obj.attr == "fill") {
+
+                res.val = d => {
+                    if (d["Clicked"] == 1) {
+                        return "red"
+                    } else {
+                        if (i == 1) {
+                            return attr_info[key]["scale"](d[key])
+                        }
+                        else {
+                            return "white";
+                        }
+
+                    }
+                }
+            }
+            else if (obj.attr == "fill-opacity") {
+
+                res.val = d => {
+                    if (i == 1) {
+                        return 1;
+                    } else {
+                        if (d["Clicked"] == 1) {
+                            return 1
+                        } else {
+                            return 0;
+                        };
+                    }
+
+                }
+            }
+            else if (obj.attr == "stroke") {
+
+                res.val = d => {
+                    if (d["Clicked"] == 1) {
+                        return "red"
+                    } else {
+                        if (i == 1) {
+                            return attr_info[key]["scale"](d[key])
+                        }
+                        else {
+                            return "#457E9B"
+                        }
+                    };
+                }
+
+            };
+
+            return res;
+        })
+
+        var circles = graphInfo.graph.selectAll("circle")
+            .data(cars);
+
+        circles.exit().remove();
+
+
+        circles = circles.enter().append("circle")
+            .attr(enterList[0][0], enterList[0][1])
+            .attr(enterList[1][0], enterList[1][1])
+            .on("mouseout", function (d) {
+                tooltip.transition()
+                    .duration(200)
+                    .style("opacity", 0);
+            })
+            .merge(circles)
+            .attr(mergeList[0].attr, mergeList[0].val)
+            .attr(mergeList[1].attr, mergeList[1].val)
+            .attr(mergeList[2].attr, mergeList[2].val)
+            .attr(mergeList[3].attr, mergeList[3].val)
+            .attr(mergeList[4].attr, mergeList[4].val)
+            .attr(mergeList[5].attr, mergeList[5].val)
+            .on("mouseover", function (event, d, i) {
+                tooltip.transition()
+                    .duration(200)
+                    .style("opacity", .9);
+                updateTooltip(+d["ID"] - 1, event.pageX, event.pageY)
+            })
+            .on("click", function (event, d) {
+                d["Clicked"] = !d["Clicked"];
+                update();
+
+            });
+
+    }
+
+    function remakeGraph() {
+        for (var i = 0; i < 3; i++) {
+            remakeOneGraph(i);
+        }
+    }
+
+    // Legends 
+    function makeLegend() {
+        for (var i = 0; i < 2; i++) {
+            legend = d3.select("#Legend" + (i + 1));
+
+            legend.append("text")
+                .attr("x", 0)
+                .attr("y", function (d, i) { return 75 })
+                .attr("text-anchor", "left")
+                .style("font-size", "20px")
+                .style("alignment-baseline", "middle");
+
+            (i == 1) ? legend.select("text").text("Fuel Type") : legend.select("text").text("Width");
+
+        }
+    }
+
+    function updateLegend() {
+        // TODO: Make values more human readable (ie. round to 10s)
+        var keys = [...Array(Math.min(4, cars.length)).keys()];
+        var quartiles = d3.scaleLinear()
+            .domain([0, 3])
+            .range([attr_info[graphs[0].z]["range"][0], attr_info[graphs[0].z]["range"][1]]);
+        keys = keys.map(k => quartiles(k));
+        //console.log(keys);
+
+        legend1 = d3.select("#Legend1");
+        var circles1 = legend1.selectAll("circle")
+            .data(keys)
+
+        circles1.enter()
+            .append("circle")
+            .attr("stroke", "#457E9B")
             .attr("fill", "none")
-            .attr("cx", carScale(quartiles(3)) + 5)
-            .attr("cy", function(d, i){ return 100 + i*25}) // 100 is where the first dot appears. 25 is the distance between dots
-            .attr("r", function(d, i) {return carScale(d)})
-        .merge(circles1);
-    circles1.exit().remove();
+            .attr("cx", attr_info[graphs[0].z]["scale"](quartiles(3)) + 5)
+            .attr("cy", function (d, i) { return 100 + i * 25 }) // 100 is where the first dot appears. 25 is the distance between dots
+            .attr("r", function (d, i) { return attr_info[graphs[0].z]["scale"](d) })
+            .merge(circles1);
+        circles1.exit().remove();
 
-    var labels1 = legend1.selectAll("labels")
-        .data(keys);
-    labels1.enter()
-        .append("text")
+        var labels1 = legend1.selectAll("#labels")
+            .data(keys);
+        labels1.enter()
+            .append("text")
             .attr("text-anchor", "left")
             .style("alignment-baseline", "middle")
-            .attr("x", carScale(quartiles(3)) + 25)
-            .attr("y", function(d, i){ return 100 + i*25})
-        .merge(labels1) // 100 is where the first dot appears. 25 is the distance between dots
-            .text(function(d, i) { return Number(d.toFixed(0))});
-    labels1.exit().remove();
+            .attr("x", attr_info[graphs[0].z]["scale"](quartiles(3)) + 25)
+            .attr("y", function (d, i) { return 100 + i * 25 })
+            .attr("id", "labels")
+            .merge(labels1) // 100 is where the first dot appears. 25 is the distance between dots
+            .text(function (d, i) { return Number(d.toFixed(0)) });
+        labels1.exit().remove();
 
-    legend2 = d3.select("#Legend2"); 
+        legend2 = d3.select("#Legend2");
 
-    // Here too
-    legend2.selectAll("*").remove();
+        keys = attr_info[graphs[1].z]["range"];
 
-    keys = [... new Set(Fuel)];
-
-    var circles2 = legend2.selectAll("circle")
-        .data(keys);
-    circles2.enter()
-        .append("circle")
+        var circles2 = legend2.selectAll("circle")
+            .data(keys);
+        circles2.enter()
+            .append("circle")
             .attr("cx", 5)
             .attr("r", 5)
-            .attr("cy", function(d, i){ return 100 + i*25}) // 100 is where the first dot appears. 25 is the distance between dots
-            .attr("fill", function(d, i) {return fuelColor(d[i])});
+            .attr("cy", function (d, i) { return 100 + i * 25 }) // 100 is where the first dot appears. 25 is the distance between dots
+            .merge(circles2)
+            .attr("fill", function (d, i) { return attr_info[graphs[1].z]["scale"](d) });
+        circles2.exit()
+            .remove();
 
-    var labels2 = legend2.selectAll("labels")
-        .data(keys);
+        var labels2 = legend2.selectAll("#labels")
+            .data(keys);
 
-    labels2.enter()
-        .append("text")
+        labels2.enter()
+            .append("text")
             .attr("x", 25)
             .attr("text-anchor", "left")
             .style("alignment-baseline", "middle")
-            .attr("y", function(d,i){ return 100 + i*25}) // 100 is where the first dot appears. 25 is the distance between dots
-            .text(function(d, i) { return d})
-            .attr("fill", function(d, i) { return fuelColor(d[i])});
-  }
+            .attr("y", function (d, i) { return 100 + i * 25 }) // 100 is where the first dot appears. 25 is the distance between dots
+            .attr("id", "labels")
+            .attr("class", "small")
+            .merge(labels2)
+            .attr("fill", function (d, i) { return attr_info[graphs[1].z]["scale"](d) })
+            .text(function (d, i) { var temp = d.split(" "); return (temp.length >= 2) ? temp.splice(-2).join(" ") : d });
+        labels2.exit().remove();
+    }
 
-  function update() { 
-      collect(); 
-      makeRanges(); 
-      remakeGraph();
-      updateLegend();
-  }
+    ///////////////
+    // Filtering //
+    ///////////////
 
-  function init() { 
-      collect(); 
-      makeRanges(); 
-      remakeGraph();
-      makeLegend();
-      updateLegend();
-  }
+    // Refer class code to go about filtering 
+    function filterToGasoline() {
+        cars = cars.filter(d => d["Fuel Information.Fuel Type"] == "Gasoline");
+        update();
+        updateSliders("Fuel Information.Fuel Type");
+    }
 
+    function filterToE85() {
+        cars = cars.filter(d => d["Fuel Information.Fuel Type"] == "E85");
+        update();
+        updateSliders("Fuel Information.Fuel Type");
+    }
 
-  // Add switches to keep track of what has been pressed to adjust based on master. Use big update function to update switches and data. 
-  function filterToGasoline() { 
-      cars = cars.filter(d => d["Fuel Information.Fuel Type"] == "Gasoline");
-      update();
-  }
+    function filterToCarMPG(lb, ub) {
+        cars = masterCars.filter(d => d["Fuel Information.City mpg"] >= lb && d["Fuel Information.City mpg"] <= ub);
+        update();
+        updateSliders("Fuel Information.City mpg");
+    }
 
-  function filterToE85() { 
-      cars = cars.filter(d => d["Fuel Information.Fuel Type"] == "E85");
-      update();
-  }
+    function reset() {
+        cars = [...masterCars]
+        update();
+        updateSliders(null);
 
-  function filterToCarMPG(lb, ub) { 
-      // Temp fix for now, refer to above comment for permanent fix. 
-      cars = masterCars.slice();
+        //filteredButtons = []
+        filteredSliders = {}
+        filteredButtonCategories = {}
+        updateFilterInfo();
 
-      cars = cars.filter(d => d["Fuel Information.City mpg"] >= lb &&  d["Fuel Information.City mpg"] <= ub);
-      update();
-  }
+        $("select").val('default');
+        $("select").selectpicker("refresh");
+    }
 
-  function updateTooltip(id, x, y) { 
-      var data = masterCars[id]
-      tooltip.html(data["Identification.ID"] + "<br>" + data["Engine Information.Transmission"] + 
-      "<br>Highway MPG: " + data["Fuel Information.Highway mpg"] + "<br>City MPG: " + data["Fuel Information.City mpg"] + 
-      "<br>Fuel Type: " + data["Fuel Information.Fuel Type"] + "<br>" + data["Engine Information.Engine Type"] + "<br>" + 
-      data["Engine Information.Driveline"] + "<br>LxWxH: " + data["Dimensions.Length"] + "x" + data["Dimensions.Width"] + 
-      "x" + data["Dimensions.Height"])
-        .style("left", (x + 5) + "px") 
-        .style("top", (y - 30) + "px");
-  }
+    function sendName(attrAdj, where) {
+        // TODO: This needs to be updated to update queries for filtering
+        // Plan: buttons blur out and sliders disable (max = min) when query doesnt apply to certain points anymore 
+        //       light up buttons that are selected 
+        //       buttons that can still work and are not selected are normal colors
+        //       update slider max and min as well
+        //       don't update what is currently changing
+        //       DO NOT propogate any changes back to filter. just change the appearance
+
+        if (where == 0) {
+            attrAdj = attrAdj.map(d => queries.push([d.slice(0, d.lastIndexOf(",")), d.slice(d.lastIndexOf(",") + 2)]));
+        } else {
+            queries.push(attrAdj);
+        }
+        //console.log(queries);
+    }
+
+    /////////////
+    // Tooltip //
+    /////////////
+
+    function updateTooltip(id, x, y) {
+        var lr = (x < parseInt(screen.width / 2)) ? x : x - 275;
+        var data = masterCars[id]
+        tooltip.html(data["Identification.ID"] + "<br>" + data["Engine Information.Transmission"] +
+            "<br>Highway MPG: " + data["Fuel Information.Highway mpg"] + "<br>City MPG: " + data["Fuel Information.City mpg"] +
+            "<br>Fuel Type: " + data["Fuel Information.Fuel Type"] + "<br>" + data["Engine Information.Engine Type"] + "<br>" +
+            data["Engine Information.Driveline"] + "<br>LxWxH: " + data["Dimensions.Length"] + "x" + data["Dimensions.Width"] +
+            "x" + data["Dimensions.Height"])
+            .style("left", (lr + 5) + "px")
+            .style("top", (y - 30) + "px");
+    }
 
 </script>
 
