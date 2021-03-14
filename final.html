@@ -114,9 +114,7 @@
         display: flex; 
         flex-shrink: 2;
     }
-    /* .infoText {
-        
-    } */
+
     .filterInfo{
         display: flex;
         flex-direction: row;
@@ -125,11 +123,10 @@
     p {
         margin-left: 10px;
     }
-    /* .selected {
+    .selected {
         color:red;
         margin: 10px;
-        float: right;
-    } */
+    }
 </style>
 
 <head>
@@ -147,14 +144,10 @@
     <div class="bar">
         <button type="button" class="btn btn-danger" onclick="reset()">Reset</button>
     </div>
-    <!-- <div class="infoText"> -->
     <div class="filterInfo">
         <b>Currently Filtering on:</b>
     </div>
-    <!-- <div class="selected">
-            <b>Selected</b>
-        </div>
-    </div> -->
+
 
 
     <div class="rows">
@@ -181,6 +174,9 @@
         </button>
         <div class="dropdown-menu dropdown-menu-right" id="dropdown-menu" aria-labelledby="dropdownMenuButton">
         </div>
+    </div>
+    <div class="selected">
+        <b>Selected Cars will be shown in red</b>
     </div>
 
     <script src="http://d3js.org/d3.v6.min.js"></script>
