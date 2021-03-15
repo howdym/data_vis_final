@@ -395,7 +395,7 @@
 
             // For testing 
             // $(id).change(filterToE85);
-            $(id).change(_ => buttonClick(($(id).val() == null) ? d : $(id).val()));
+            $(id).change(e => {e.stopImmediatePropagation(); buttonClick(($(id).val() == null) ? d : $(id).val());});
         })
 
         // $("select").each(function () {
@@ -456,7 +456,7 @@
             // For testing only 
             // tooltipSlider.noUiSlider.on("end", d => filterToCarMPG(+tooltipSlider.noUiSlider.get()[0], 
             //                                                        +tooltipSlider.noUiSlider.get()[1]));
-            tooltipSlider.noUiSlider.on("end", _ => {
+            tooltipSlider.noUiSlider.on("change", _ => {
                 sliderChange(d, +tooltipSlider.noUiSlider.get()[0],
                     +tooltipSlider.noUiSlider.get()[1])
             })
@@ -522,7 +522,7 @@
         //console.log(range)
         //console.log(sliderVals)
         if (range == sliderVals[1]) {
-            delete filteredSliders.d
+            delete filteredSliders[d]
             //console.log("delete");
         } else {
             filteredSliders[d] = [start, end]
@@ -572,9 +572,7 @@
                 return buttonCount + values.length
             });
 
-        if (buttonCount == 0) {
-            update();
-        } else {
+        if (buttonCount != 0) {
             const filterButton = Object.keys(filteredButtonCategories).map(
                 function (e) {
                     var values = filteredButtonCategories[e]
@@ -591,22 +589,21 @@
                         }
                         );
                     }
-                    update();
                     //updateSliders(null);
                 }
             );
         }
 
-        if (Object.keys(filteredSliders).length) {
+        if (Object.keys(filteredSliders).length != 0) {
             const filterSlider = Object.keys(filteredSliders).map(
                 function (e) {
                     bounds = filteredSliders[e]
                     cars = cars.filter(d => d[e] >= bounds[0] && d[e] <= bounds[1]);
-                    update();
-                    updateSliders(e);
                 }
             )
         }
+        update();
+        updateSliders(null);
 
         updateFilterInfo();
     }
